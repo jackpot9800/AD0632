@@ -57,5 +57,8 @@
     "@babel/core": "^7.25.2",
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
+  },
+  "resolutions": {
+    "expo-modules-core": "~2.2.0"
   }
 }

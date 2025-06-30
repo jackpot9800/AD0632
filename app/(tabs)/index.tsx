@@ -17,24 +17,17 @@ import { apiService, Presentation, AssignedPresentation, DefaultPresentation } f
 import { statusService } from '@/services/StatusService';
 
 // Importation conditionnelle de expo-keep-awake
-let activateKeepAwakeAsync: () => Promise<void>;
-let deactivateKeepAwake: () => void;
+let activateKeepAwake = () => {};
+let deactivateKeepAwake = () => {};
 
 if (Platform.OS !== 'web') {
   try {
     const keepAwake = require('expo-keep-awake');
-    activateKeepAwakeAsync = keepAwake.activateKeepAwakeAsync;
-    deactivateKeepAwake = keepAwake.deactivateKeepAwake;
+    activateKeepAwake = keepAwake.activateKeepAwake || (() => {});
+    deactivateKeepAwake = keepAwake.deactivateKeepAwake || (() => {});
   } catch (error) {
     console.log('Keep awake not available:', error);
-    // Fonctions factices si le module n'est pas disponible
-    activateKeepAwakeAsync = async () => {};
-    deactivateKeepAwake = () => {};
   }
-} else {
-  // Fonctions factices pour le web
-  activateKeepAwakeAsync = async () => {};
-  deactivateKeepAwake = () => {};
 }
 
 export default function HomeScreen() {
@@ -51,7 +44,7 @@ export default function HomeScreen() {
     
     // Activer keep-awake pour empêcher la mise en veille
     if (Platform.OS !== 'web') {
-      activateKeepAwakeAsync();
+      activateKeepAwake();
     }
     
     // Démarrer le monitoring périodique toutes les 5 minutes

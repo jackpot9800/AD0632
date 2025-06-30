@@ -18,24 +18,17 @@ import { apiService, PresentationDetails, Slide } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 
 // Importation conditionnelle de expo-keep-awake
-let activateKeepAwakeAsync: () => Promise<void>;
-let deactivateKeepAwake: () => void;
+let activateKeepAwake = () => {};
+let deactivateKeepAwake = () => {};
 
 if (Platform.OS !== 'web') {
   try {
     const keepAwake = require('expo-keep-awake');
-    activateKeepAwakeAsync = keepAwake.activateKeepAwakeAsync;
-    deactivateKeepAwake = keepAwake.deactivateKeepAwake;
+    activateKeepAwake = keepAwake.activateKeepAwake || (() => {});
+    deactivateKeepAwake = keepAwake.deactivateKeepAwake || (() => {});
   } catch (error) {
     console.log('Keep awake not available:', error);
-    // Fonctions factices si le module n'est pas disponible
-    activateKeepAwakeAsync = async () => {};
-    deactivateKeepAwake = () => {};
   }
-} else {
-  // Fonctions factices pour le web
-  activateKeepAwakeAsync = async () => {};
-  deactivateKeepAwake = () => {};
 }
 
 const { width, height } = Dimensions.get('window');
@@ -102,7 +95,7 @@ export default function PresentationScreen() {
     
     // Activer keep-awake pour empêcher la mise en veille
     if (Platform.OS !== 'web') {
-      activateKeepAwakeAsync();
+      activateKeepAwake();
     }
     
     // Configurer selon les paramètres
@@ -297,10 +290,7 @@ export default function PresentationScreen() {
   }, [presentation, currentSlideIndex]);
 
   const nextSlide = useCallback(() => {
-    if (!presentation || presentation.slides.length === 0) {
-      console.log('=== NO PRESENTATION FOR NEXT v1.5.1 ===');
-      return;
-    }
+    if (!presentation) return;
     
     console.log(`=== NEXT SLIDE LOGIC v1.5.1 ===`);
     console.log(`Current: ${currentSlideIndex + 1}/${presentation.slides.length}`);
