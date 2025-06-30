@@ -91,7 +91,7 @@ class ApiService {
 
   async initialize() {
     try {
-      console.log('=== INITIALIZING API SERVICE v1.4.0 ===');
+      console.log('=== INITIALIZING API SERVICE v1.5.0 ===');
       
       const savedUrl = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
       const savedDeviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
@@ -144,7 +144,7 @@ class ApiService {
    */
   private async detectApiType(): Promise<void> {
     try {
-      console.log('=== DETECTING API TYPE ===');
+      console.log('=== DETECTING API TYPE v1.5.0 ===');
       
       // Tester d'abord l'API affichageDynamique
       const response = await this.makeRequest<any>('/version');
@@ -201,7 +201,7 @@ class ApiService {
     // Détecter le type d'API d'abord
     await this.detectApiType();
 
-    console.log('=== STARTING ASSIGNMENT CHECK v1.4.0 ===');
+    console.log('=== STARTING ASSIGNMENT CHECK v1.5.0 ===');
     console.log('API Type:', this.apiType);
     console.log('Base URL:', this.baseUrl);
 
@@ -260,7 +260,7 @@ class ApiService {
     // Détecter le type d'API d'abord
     await this.detectApiType();
 
-    console.log('=== STARTING DEFAULT PRESENTATION CHECK v1.4.0 ===');
+    console.log('=== STARTING DEFAULT PRESENTATION CHECK v1.5.0 ===');
     console.log('API Type:', this.apiType);
     console.log('Base URL:', this.baseUrl);
 
@@ -341,7 +341,7 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v1.4.0 ===');
+      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v1.5.0 ===');
       const endpoint = this.getEndpoint('/device/assigned-presentation');
       console.log('Using endpoint:', endpoint);
       console.log('API Type:', this.apiType);
@@ -397,7 +397,7 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.4.0 ===');
+      console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.5.0 ===');
       const endpoint = this.getEndpoint('/device/default-presentation');
       console.log('Using endpoint:', endpoint);
       console.log('Device ID:', this.deviceId);
@@ -506,7 +506,7 @@ class ApiService {
     const finalEndpoint = this.getEndpoint(cleanEndpoint);
     const url = `${this.baseUrl}${finalEndpoint}`;
     
-    console.log('=== API REQUEST v1.4.0 ===');
+    console.log('=== API REQUEST v1.5.0 ===');
     console.log('URL:', url);
     console.log('Method:', options.method || 'GET');
     
@@ -515,10 +515,10 @@ class ApiService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Cache-Control': 'no-cache',
-      'User-Agent': 'PresentationKiosk/1.4.0 (FireTV)',
+      'User-Agent': 'PresentationKiosk/1.5.0 (FireTV)',
       'X-Device-ID': this.deviceId,
       'X-Device-Type': 'firetv',
-      'X-App-Version': '1.4.0',
+      'X-App-Version': '1.5.0',
       ...options.headers,
     };
 
@@ -571,7 +571,7 @@ class ApiService {
 
   async testConnection(): Promise<boolean> {
     try {
-      console.log('=== TESTING CONNECTION v1.4.0 ===');
+      console.log('=== TESTING CONNECTION v1.5.0 ===');
       console.log('Testing URL:', this.baseUrl);
       
       if (!this.baseUrl) {
@@ -631,7 +631,7 @@ class ApiService {
 
   async registerDevice(): Promise<boolean> {
     try {
-      console.log('=== REGISTERING DEVICE v1.4.0 ===');
+      console.log('=== REGISTERING DEVICE v1.5.0 ===');
       console.log('Device ID:', this.deviceId);
       console.log('Server URL:', this.baseUrl);
       console.log('API Type:', this.apiType);
@@ -641,7 +641,7 @@ class ApiService {
         name: `Fire TV Stick - ${this.deviceId.split('_').pop()}`,
         type: 'firetv',
         platform: 'android',
-        user_agent: 'PresentationKiosk/1.4.0 (FireTV)',
+        user_agent: 'PresentationKiosk/1.5.0 (FireTV)',
         capabilities: [
           'video_playback',
           'image_display',
@@ -701,7 +701,7 @@ class ApiService {
 
   async getPresentations(): Promise<Presentation[]> {
     try {
-      console.log('=== FETCHING PRESENTATIONS v1.4.0 ===');
+      console.log('=== FETCHING PRESENTATIONS v1.5.0 ===');
       
       if (!this.isRegistered) {
         console.log('Device not registered, attempting registration...');
@@ -734,7 +734,7 @@ class ApiService {
 
   async getPresentation(id: number): Promise<PresentationDetails> {
     try {
-      console.log('=== FETCHING PRESENTATION DETAILS v1.4.0 ===');
+      console.log('=== FETCHING PRESENTATION DETAILS v1.5.0 ===');
       console.log('Presentation ID:', id);
       
       if (!this.isRegistered) {
@@ -780,7 +780,7 @@ class ApiService {
         // Utiliser la vraie durée de la base de données
         const duration = parseInt(slide.duration?.toString() || '5');
         
-        console.log('=== SLIDE DURATION DEBUG v1.4.0 ===');
+        console.log('=== SLIDE DURATION DEBUG v1.5.0 ===');
         console.log('Slide ID:', slide.id);
         console.log('Raw duration from DB:', slide.duration);
         console.log('Parsed duration:', duration);
@@ -847,7 +847,7 @@ class ApiService {
   private getBaseServerUrl(): string {
     if (!this.baseUrl) return '';
     
-    console.log('=== BUILDING BASE SERVER URL ===');
+    console.log('=== BUILDING BASE SERVER URL v1.5.0 ===');
     console.log('Original baseUrl:', this.baseUrl);
     
     // Supprimer /api/index.php ou /index.php de l'URL pour obtenir l'URL de base
@@ -888,7 +888,7 @@ class ApiService {
 
   async setServerUrl(url: string): Promise<boolean> {
     try {
-      console.log('=== SETTING SERVER URL v1.4.0 ===');
+      console.log('=== SETTING SERVER URL v1.5.0 ===');
       console.log('Input URL:', url);
       
       // Nettoyer l'URL et s'assurer qu'elle se termine par index.php
@@ -961,7 +961,7 @@ class ApiService {
   }
 
   async resetDevice(): Promise<void> {
-    console.log('=== RESETTING DEVICE v1.4.0 ===');
+    console.log('=== RESETTING DEVICE v1.5.0 ===');
     
     this.stopAssignmentCheck();
     this.stopDefaultPresentationCheck();

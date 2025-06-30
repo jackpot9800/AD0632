@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Switch,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -93,7 +94,7 @@ export default function SettingsScreen() {
       const testUrl = url.replace(/\/+$/, '');
       const finalUrl = testUrl.endsWith('index.php') ? testUrl : `${testUrl}/index.php`;
       
-      console.log('Testing connection to:', finalUrl);
+      console.log('Testing connection to v1.5.0:', finalUrl);
       
       await AsyncStorage.setItem('server_url', finalUrl);
       
@@ -102,7 +103,7 @@ export default function SettingsScreen() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'PresentationKiosk/1.4.0 (FireTV)',
+          'User-Agent': 'PresentationKiosk/1.5.0 (FireTV)',
           'Cache-Control': 'no-cache',
         },
       });
@@ -157,7 +158,7 @@ export default function SettingsScreen() {
     setSaving(true);
     
     try {
-      console.log('=== SAVING SETTINGS v1.4.0 ===');
+      console.log('=== SAVING SETTINGS v1.5.0 ===');
       
       const success = await apiService.setServerUrl(serverUrl.trim());
       
@@ -204,7 +205,7 @@ export default function SettingsScreen() {
     setRegistering(true);
     
     try {
-      console.log('=== MANUAL DEVICE REGISTRATION v1.4.0 ===');
+      console.log('=== MANUAL DEVICE REGISTRATION v1.5.0 ===');
       
       const connectionOk = await apiService.testConnection();
       if (!connectionOk) {
@@ -290,7 +291,7 @@ export default function SettingsScreen() {
             <SettingsIcon size={32} color="#ffffff" />
           </LinearGradient>
           <Text style={styles.title}>Paramètres</Text>
-          <Text style={styles.subtitle}>Version 1.4.0 - Simplifiée</Text>
+          <Text style={styles.subtitle}>Version 1.5.0 - Simplifiée</Text>
         </View>
 
         <View style={styles.section}>
@@ -427,7 +428,7 @@ export default function SettingsScreen() {
             <View style={styles.infoRow}>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Version</Text>
-                <Text style={styles.infoValue}>1.4.0 - Simplifiée</Text>
+                <Text style={styles.infoValue}>1.5.0 - Simplifiée</Text>
               </View>
             </View>
             
@@ -444,6 +445,13 @@ export default function SettingsScreen() {
                 <Text style={styles.infoValue}>
                   {apiService.isDeviceRegistered() ? 'Enregistré' : 'Non enregistré'}
                 </Text>
+              </View>
+            </View>
+            
+            <View style={styles.infoRow}>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Plateforme</Text>
+                <Text style={styles.infoValue}>{Platform.OS}</Text>
               </View>
             </View>
           </View>

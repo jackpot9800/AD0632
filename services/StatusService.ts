@@ -37,7 +37,7 @@ class StatusService {
   private onRemoteCommandCallback: ((command: RemoteCommand) => void) | null = null;
 
   async initialize() {
-    console.log('=== INITIALIZING STATUS SERVICE v1.4.0 ===');
+    console.log('=== INITIALIZING STATUS SERVICE v1.5.0 ===');
     
     // Démarrer le heartbeat toutes les 60 secondes
     this.startHeartbeat();
@@ -86,7 +86,7 @@ class StatusService {
     try {
       if (!apiService.isDeviceRegistered()) return;
 
-      console.log('=== SENDING HEARTBEAT v1.4.0 ===');
+      console.log('=== SENDING HEARTBEAT v1.5.0 ===');
       
       const status = await this.getCurrentStatus();
       
@@ -100,7 +100,7 @@ class StatusService {
       });
 
       if (response.ok) {
-        console.log('Heartbeat sent successfully v1.4.0');
+        console.log('Heartbeat sent successfully v1.5.0');
       }
     } catch (error) {
       console.log('Failed to send heartbeat:', error);
@@ -140,7 +140,7 @@ class StatusService {
    * Exécute une commande à distance
    */
   private async executeRemoteCommand(command: RemoteCommand) {
-    console.log('=== EXECUTING REMOTE COMMAND v1.4.0 ===', command);
+    console.log('=== EXECUTING REMOTE COMMAND v1.5.0 ===', command);
 
     if (this.onRemoteCommandCallback) {
       this.onRemoteCommandCallback(command);
@@ -174,7 +174,7 @@ class StatusService {
    */
   private async getCurrentStatus(): Promise<DeviceStatus> {
     const deviceId = apiService.getDeviceId();
-    const appVersion = '1.4.0';
+    const appVersion = '1.5.0';
     
     // Récupérer les informations système (simulées pour l'exemple)
     const systemInfo = await this.getSystemInfo();
@@ -222,7 +222,7 @@ class StatusService {
       last_heartbeat: new Date().toISOString(),
     } as DeviceStatus;
 
-    console.log('Status updated v1.4.0:', this.currentStatus);
+    console.log('Status updated v1.5.0:', this.currentStatus);
 
     if (this.onStatusUpdateCallback) {
       this.onStatusUpdateCallback(this.currentStatus);

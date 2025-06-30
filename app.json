@@ -17,7 +17,7 @@
         "backgroundColor": "#0a0a0a"
       },
       "package": "com.presentationkiosk.firetv",
-      "versionCode": 7,
+      "versionCode": 8,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
