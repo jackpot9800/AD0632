@@ -25,14 +25,14 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // États pour contrôler les surveillances - VERSION ULTIME 1.3.8
+  // États pour contrôler les surveillances - VERSION FINALE 1.3.9
   const [assignmentCheckStarted, setAssignmentCheckStarted] = useState(false);
   const [defaultCheckStarted, setDefaultCheckStarted] = useState(false);
   
-  // Refs pour les timers - ULTRA SIMPLIFIÉS v1.3.8
+  // Refs pour les timers - ULTRA SIMPLIFIÉS v1.3.9
   const autoLaunchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const initializationCompleteRef = useRef(false);
-  const defaultPresentationProcessedRef = useRef<Set<number>>(new Set());
+  const appStartTimeRef = useRef<number>(Date.now());
 
   useEffect(() => {
     initializeApp();
@@ -49,11 +49,11 @@ export default function HomeScreen() {
 
   const initializeApp = async () => {
     if (initializationCompleteRef.current) {
-      console.log('=== INITIALIZATION ALREADY COMPLETE v1.3.8 ===');
+      console.log('=== INITIALIZATION ALREADY COMPLETE v1.3.9 ===');
       return;
     }
 
-    console.log('=== STARTING APP INITIALIZATION v1.3.8 ===');
+    console.log('=== STARTING APP INITIALIZATION v1.3.9 ===');
     setLoading(true);
     
     await apiService.initialize();
@@ -72,7 +72,7 @@ export default function HomeScreen() {
     await loadPresentations();
     
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.3.8 ===');
+      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.3.9 ===');
       
       // Démarrer les surveillances
       if (!assignmentCheckStarted) {
@@ -85,7 +85,7 @@ export default function HomeScreen() {
     
     setLoading(false);
     initializationCompleteRef.current = true;
-    console.log('=== APP INITIALIZATION COMPLETE v1.3.8 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v1.3.9 ===');
   };
 
   const initializeStatusService = async () => {
@@ -139,16 +139,16 @@ export default function HomeScreen() {
 
   const startAssignmentMonitoring = async () => {
     if (assignmentCheckStarted) {
-      console.log('=== ASSIGNMENT CHECK ALREADY STARTED v1.3.8 ===');
+      console.log('=== ASSIGNMENT CHECK ALREADY STARTED v1.3.9 ===');
       return;
     }
 
-    console.log('=== STARTING ASSIGNMENT MONITORING v1.3.8 ===');
+    console.log('=== STARTING ASSIGNMENT MONITORING v1.3.9 ===');
     setAssignmentCheckStarted(true);
     
     try {
       await apiService.startAssignmentCheck((assigned: AssignedPresentation) => {
-        console.log('=== ASSIGNED PRESENTATION DETECTED v1.3.8 ===');
+        console.log('=== ASSIGNED PRESENTATION DETECTED v1.3.9 ===');
         setAssignedPresentation(assigned);
         
         // Annuler le timer de présentation par défaut si actif
@@ -166,7 +166,7 @@ export default function HomeScreen() {
       // Vérifier s'il y a une assignation existante
       const existing = await apiService.checkForAssignedPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION v1.3.8 ===');
+        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION v1.3.9 ===');
         setAssignedPresentation(existing);
         
         // Annuler le timer de présentation par défaut si actif
@@ -187,56 +187,43 @@ export default function HomeScreen() {
 
   const startDefaultPresentationMonitoring = async () => {
     if (defaultCheckStarted) {
-      console.log('=== DEFAULT CHECK ALREADY STARTED v1.3.8 ===');
+      console.log('=== DEFAULT CHECK ALREADY STARTED v1.3.9 ===');
       return;
     }
 
-    console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.3.8 ===');
+    console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.3.9 ===');
     setDefaultCheckStarted(true);
     
     try {
       await apiService.startDefaultPresentationCheck((defaultPres: DefaultPresentation) => {
-        console.log('=== DEFAULT PRESENTATION DETECTED v1.3.8 ===');
+        console.log('=== DEFAULT PRESENTATION DETECTED v1.3.9 ===');
         console.log('Default presentation ID:', defaultPres.presentation_id);
-        console.log('Already processed:', defaultPresentationProcessedRef.current.has(defaultPres.presentation_id));
         console.log('Assigned presentation exists:', !!assignedPresentation);
         
         setDefaultPresentation(defaultPres);
         
-        // CORRECTION CRITIQUE v1.3.8: Vérifier si cette présentation par défaut a déjà été traitée
-        if (!defaultPresentationProcessedRef.current.has(defaultPres.presentation_id)) {
-          defaultPresentationProcessedRef.current.add(defaultPres.presentation_id);
-          
-          // TOUJOURS lancer automatiquement les présentations par défaut
-          // sauf s'il y a déjà une présentation assignée active
-          if (!assignedPresentation) {
-            console.log('=== SCHEDULING DEFAULT PRESENTATION AUTO-LAUNCH v1.3.8 ===');
-            scheduleDefaultPresentationLaunch(defaultPres);
-          } else {
-            console.log('=== ASSIGNED PRESENTATION ACTIVE, DEFAULT AVAILABLE MANUALLY v1.3.8 ===');
-          }
+        // CORRECTION CRITIQUE v1.3.9: TOUJOURS lancer automatiquement les présentations par défaut
+        // sauf s'il y a déjà une présentation assignée active
+        if (!assignedPresentation) {
+          console.log('=== LAUNCHING DEFAULT PRESENTATION IMMEDIATELY v1.3.9 ===');
+          launchDefaultPresentation(defaultPres);
         } else {
-          console.log('=== DEFAULT PRESENTATION ALREADY PROCESSED v1.3.8 ===');
+          console.log('=== ASSIGNED PRESENTATION ACTIVE, DEFAULT AVAILABLE MANUALLY v1.3.9 ===');
         }
       });
 
       // Vérifier s'il y a une présentation par défaut existante
       const existing = await apiService.checkForDefaultPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING DEFAULT PRESENTATION v1.3.8 ===');
+        console.log('=== FOUND EXISTING DEFAULT PRESENTATION v1.3.9 ===');
         console.log('Existing default presentation ID:', existing.presentation_id);
         
         setDefaultPresentation(existing);
         
-        // Vérifier si cette présentation par défaut a déjà été traitée
-        if (!defaultPresentationProcessedRef.current.has(existing.presentation_id)) {
-          defaultPresentationProcessedRef.current.add(existing.presentation_id);
-          
-          // TOUJOURS programmer le lancement automatique si pas d'assignation
-          if (!assignedPresentation) {
-            console.log('=== SCHEDULING EXISTING DEFAULT PRESENTATION LAUNCH v1.3.8 ===');
-            scheduleDefaultPresentationLaunch(existing);
-          }
+        // CORRECTION CRITIQUE v1.3.9: TOUJOURS lancer automatiquement si pas d'assignation
+        if (!assignedPresentation) {
+          console.log('=== LAUNCHING EXISTING DEFAULT PRESENTATION IMMEDIATELY v1.3.9 ===');
+          launchDefaultPresentation(existing);
         }
       }
     } catch (error) {
@@ -245,24 +232,8 @@ export default function HomeScreen() {
     }
   };
 
-  const scheduleDefaultPresentationLaunch = (defaultPres: DefaultPresentation) => {
-    console.log('=== SCHEDULING DEFAULT PRESENTATION LAUNCH v1.3.8 ===');
-    console.log('Presentation ID:', defaultPres.presentation_id);
-    console.log('Presentation name:', defaultPres.presentation_name);
-    
-    // Annuler tout timer existant
-    if (autoLaunchTimerRef.current) {
-      clearTimeout(autoLaunchTimerRef.current);
-      autoLaunchTimerRef.current = null;
-    }
-    
-    // LANCEMENT IMMÉDIAT pour les présentations par défaut (plus de délai)
-    console.log('=== LAUNCHING DEFAULT PRESENTATION IMMEDIATELY v1.3.8 ===');
-    launchDefaultPresentation(defaultPres);
-  };
-
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.3.8 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.3.9 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -278,7 +249,7 @@ export default function HomeScreen() {
   };
 
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.3.8 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.3.9 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
@@ -298,30 +269,26 @@ export default function HomeScreen() {
     // Empêcher les refresh multiples
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v1.3.8 ===');
+    console.log('=== MANUAL REFRESH v1.3.9 ===');
     setRefreshing(true);
-    
-    // RÉINITIALISER le tracking des présentations par défaut lors du refresh
-    defaultPresentationProcessedRef.current.clear();
     
     // NE PAS relancer les surveillances lors d'un refresh manuel
     await checkConnection();
     await loadPresentations();
     
-    // Vérifier à nouveau les présentations par défaut après le refresh
+    // CORRECTION CRITIQUE v1.3.9: Vérifier à nouveau les présentations par défaut après le refresh
     if (apiService.isDeviceRegistered() && defaultCheckStarted) {
-      console.log('=== CHECKING DEFAULT PRESENTATION AFTER REFRESH v1.3.8 ===');
+      console.log('=== CHECKING DEFAULT PRESENTATION AFTER REFRESH v1.3.9 ===');
       try {
         const existing = await apiService.checkForDefaultPresentation();
         if (existing && !assignedPresentation) {
-          console.log('=== FOUND DEFAULT PRESENTATION AFTER REFRESH v1.3.8 ===');
+          console.log('=== FOUND DEFAULT PRESENTATION AFTER REFRESH - LAUNCHING IMMEDIATELY v1.3.9 ===');
           setDefaultPresentation(existing);
           
-          // Marquer comme non traité pour permettre le lancement
-          if (!defaultPresentationProcessedRef.current.has(existing.presentation_id)) {
-            defaultPresentationProcessedRef.current.add(existing.presentation_id);
-            scheduleDefaultPresentationLaunch(existing);
-          }
+          // Lancer immédiatement après le refresh
+          setTimeout(() => {
+            launchDefaultPresentation(existing);
+          }, 1000);
         }
       } catch (error) {
         console.log('Default presentation check after refresh failed:', error);
@@ -392,7 +359,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.3.8 - Lecture automatique des présentations par défaut ULTIME • ID: {apiService.getDeviceId()}
+          Version 1.3.9 - Lecture automatique des présentations par défaut FINALE • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -488,7 +455,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                {assignedPresentation ? '✅ Disponible manuellement' : '🚀 Lancement automatique IMMÉDIAT'}
+                {assignedPresentation ? '✅ Disponible manuellement' : '🚀 Lancement automatique IMMÉDIAT v1.3.9'}
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -566,7 +533,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.3.8 - Lecture automatique des présentations par défaut ULTIME</Text>
+          <Text style={styles.loadingSubtext}>Version 1.3.9 - Lecture automatique des présentations par défaut FINALE</Text>
         </LinearGradient>
       </View>
     );
@@ -589,7 +556,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.3.8 Lecture automatique des présentations par défaut ULTIME
+                Fire TV Stick - Version 1.3.9 Lecture automatique des présentations par défaut FINALE
               </Text>
               
               <TouchableOpacity
@@ -620,7 +587,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Lecture automatique en boucle • Présentations par défaut ULTIME v1.3.8
+              🔄 Lecture automatique en boucle • Présentations par défaut FINALE v1.3.9
             </Text>
           </View>
           
