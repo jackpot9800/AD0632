@@ -102,6 +102,11 @@ export default function PresentationScreen() {
     setImageLoadError({});
     imagePreloadRef.current = {};
     slideChangeInProgressRef.current = false;
+    timerStartTimeRef.current = 0;
+    expectedEndTimeRef.current = 0;
+    
+    // Désactiver le mode présentation dans le service de statut
+    statusService.setPresentationMode(false);
   }, []);
 
   // Monitoring des performances pour détecter les fuites mémoire
@@ -437,6 +442,9 @@ export default function PresentationScreen() {
         // Précharger les premières images
         preloadImages(data.slides.slice(0, 3));
       }
+      
+      // Activer le mode présentation dans le service de statut
+      statusService.setPresentationMode(true);
     } catch (error) {
       console.error('Error loading presentation:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
