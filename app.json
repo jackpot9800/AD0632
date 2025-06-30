@@ -2,7 +2,7 @@
   "expo": {
     "name": "Presentation Kiosk",
     "slug": "presentation-kiosk-firetv",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "landscape",
     "icon": "./assets/images/icon.png",
     "scheme": "presentationkiosk",
@@ -17,12 +17,13 @@
         "backgroundColor": "#0a0a0a"
       },
       "package": "com.presentationkiosk.firetv",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.ACCESS_WIFI_STATE",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
       ],
       "intentFilters": [
         {
@@ -31,6 +32,10 @@
             "android.intent.category.LAUNCHER",
             "android.intent.category.LEANBACK_LAUNCHER"
           ]
+        },
+        {
+          "action": "android.intent.action.BOOT_COMPLETED",
+          "category": ["android.intent.category.DEFAULT"]
         }
       ],
       "usesCleartextTraffic": true,

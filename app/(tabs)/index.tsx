@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monitor, Wifi, WifiOff, RefreshCw, Play, Pause, Settings, Repeat, Star, Activity, Zap, CircleAlert as AlertCircle, Clock, UserPlus } from 'lucide-react-native';
+import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
-import { statusService, RemoteCommand } from '@/services/StatusService';
+import { statusService } from '@/services/StatusService';
 
 const { width } = Dimensions.get('window');
 
@@ -25,36 +25,13 @@ export default function HomeScreen() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing' | 'not_configured'>('testing');
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
-  const [assignmentCheckStarted, setAssignmentCheckStarted] = useState(false);
-  const [defaultCheckStarted, setDefaultCheckStarted] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const [showDefaultPresentationPrompt, setShowDefaultPresentationPrompt] = useState(false);
-  const [autoLaunchDefaultTimer, setAutoLaunchDefaultTimer] = useState<NodeJS.Timeout | null>(null);
-  
-  // Nouveaux états pour le statut temps réel
   const [deviceStatus, setDeviceStatus] = useState<'online' | 'offline' | 'playing' | 'paused' | 'error'>('offline');
-  const [currentPresentationInfo, setCurrentPresentationInfo] = useState<{
-    id?: number;
-    name?: string;
-    slideIndex?: number;
-    totalSlides?: number;
-    isLooping?: boolean;
-  }>({});
 
   useEffect(() => {
     initializeApp();
     initializeStatusService();
   }, []);
-
-  // Nettoyage du timer au démontage du composant
-  useEffect(() => {
-    return () => {
-      if (autoLaunchDefaultTimer) {
-        clearTimeout(autoLaunchDefaultTimer);
-      }
-      statusService.stop();
-    };
-  }, [autoLaunchDefaultTimer]);
 
   const initializeApp = async () => {
     setLoading(true);
@@ -76,18 +53,6 @@ export default function HomeScreen() {
       console.log('=== DEVICE IS REGISTERED AND CONNECTED, STARTING CHECKS ===');
       startAssignmentMonitoring();
       startDefaultPresentationMonitoring();
-    } else {
-      console.log('=== DEVICE NOT READY FOR CHECKS ===');
-      console.log('Registered:', apiService.isDeviceRegistered());
-      console.log('Connection status:', connectionStatus);
-      
-      setTimeout(async () => {
-        if (apiService.isDeviceRegistered()) {
-          console.log('=== DEVICE NOW REGISTERED, STARTING CHECKS ===');
-          await startAssignmentMonitoring();
-          await startDefaultPresentationMonitoring();
-        }
-      }, 3000);
     }
     
     setLoading(false);
@@ -97,90 +62,14 @@ export default function HomeScreen() {
     try {
       await statusService.initialize();
       
-      // Configurer les callbacks pour le service de statut
       statusService.setOnStatusUpdate((status) => {
         setDeviceStatus(status.status);
-        setCurrentPresentationInfo({
-          id: status.current_presentation_id,
-          name: status.current_presentation_name,
-          slideIndex: status.current_slide_index,
-          totalSlides: status.total_slides,
-          isLooping: status.is_looping,
-        });
       });
 
-      statusService.setOnRemoteCommand((command) => {
-        handleRemoteCommand(command);
-      });
-
-      // Mettre à jour le statut initial
       statusService.updateStatus({ status: 'online' });
       
     } catch (error) {
       console.error('Failed to initialize status service:', error);
-    }
-  };
-
-  const handleRemoteCommand = (command: RemoteCommand) => {
-    console.log('=== HANDLING REMOTE COMMAND ===', command);
-    
-    switch (command.command) {
-      case 'play':
-        // Reprendre la lecture si une présentation est en cours
-        if (currentPresentationInfo.id) {
-          router.push(`/presentation/${currentPresentationInfo.id}?auto_play=true&loop_mode=${currentPresentationInfo.isLooping}&remote_command=play`);
-        }
-        break;
-        
-      case 'pause':
-        // Mettre en pause (sera géré par l'écran de présentation)
-        statusService.updatePlaybackStatus('paused');
-        break;
-        
-      case 'stop':
-        // Arrêter et revenir à l'accueil
-        router.push('/(tabs)/');
-        statusService.updatePlaybackStatus('stopped');
-        break;
-        
-      case 'restart':
-        // Redémarrer la présentation courante
-        if (currentPresentationInfo.id) {
-          router.push(`/presentation/${currentPresentationInfo.id}?auto_play=true&loop_mode=true&restart=true`);
-        }
-        break;
-        
-      case 'assign_presentation':
-        // Assigner et lancer une nouvelle présentation
-        if (command.parameters?.presentation_id) {
-          const autoPlay = command.parameters.auto_play ?? true;
-          const loopMode = command.parameters.loop_mode ?? true;
-          router.push(`/presentation/${command.parameters.presentation_id}?auto_play=${autoPlay}&loop_mode=${loopMode}&assigned=true`);
-        }
-        break;
-        
-      case 'reboot':
-        // Simuler un redémarrage de l'application
-        Alert.alert(
-          'Redémarrage demandé',
-          'L\'application va redémarrer...',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                statusService.updateStatus({ status: 'offline' });
-                // En production, cela pourrait redémarrer l'app
-                setTimeout(() => {
-                  statusService.updateStatus({ status: 'online' });
-                }, 3000);
-              }
-            }
-          ]
-        );
-        break;
-        
-      default:
-        console.warn('Unknown remote command:', command.command);
     }
   };
 
@@ -193,9 +82,7 @@ export default function HomeScreen() {
     
     setConnectionStatus('testing');
     try {
-      console.log('Testing connection to:', serverUrl);
       const isConnected = await apiService.testConnection();
-      console.log('Connection test result:', isConnected);
       setConnectionStatus(isConnected ? 'connected' : 'disconnected');
     } catch (error) {
       console.error('Connection test error:', error);
@@ -211,9 +98,7 @@ export default function HomeScreen() {
     }
     
     try {
-      console.log('Loading presentations from:', serverUrl);
       const data = await apiService.getPresentations();
-      console.log('Presentations loaded:', data.length);
       setPresentations(data);
     } catch (error) {
       console.error('Error loading presentations:', error);
@@ -229,185 +114,50 @@ export default function HomeScreen() {
   };
 
   const startAssignmentMonitoring = async () => {
-    if (assignmentCheckStarted) {
-      console.log('Assignment check already started');
-      return;
-    }
-
-    console.log('=== STARTING ASSIGNMENT MONITORING ===');
-    setAssignmentCheckStarted(true);
-    
     try {
       await apiService.startAssignmentCheck((assigned: AssignedPresentation) => {
         console.log('=== ASSIGNED PRESENTATION DETECTED ===');
-        console.log('Presentation ID:', assigned.presentation_id);
-        console.log('Auto play:', assigned.auto_play);
-        console.log('Loop mode:', assigned.loop_mode);
-        console.log('Presentation name:', assigned.presentation_name);
-        
         setAssignedPresentation(assigned);
         
-        // Lancement automatique IMMÉDIAT pour les présentations assignées
-        console.log('=== AUTO-LAUNCHING ASSIGNED PRESENTATION IMMEDIATELY ===');
-        
-        // Annuler le timer de présentation par défaut si actif
-        if (autoLaunchDefaultTimer) {
-          clearTimeout(autoLaunchDefaultTimer);
-          setAutoLaunchDefaultTimer(null);
-        }
-        
-        // Masquer la notification de présentation par défaut
-        setShowDefaultPresentationPrompt(false);
-        
-        // Mettre à jour le statut
-        statusService.updatePresentationStatus(
-          assigned.presentation_id,
-          assigned.presentation_name,
-          0,
-          0, // Will be updated when presentation loads
-          assigned.loop_mode,
-          assigned.auto_play
-        );
-        
-        // Lancer immédiatement la présentation assignée en mode boucle
+        // Lancement automatique IMMÉDIAT
         setTimeout(() => {
           launchAssignedPresentation(assigned);
         }, 1000);
       });
 
-      console.log('=== CHECKING FOR EXISTING ASSIGNMENT ===');
       const existing = await apiService.checkForAssignedPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING ASSIGNMENT ===', existing);
         setAssignedPresentation(existing);
-        
-        // Lancement automatique immédiat pour les assignations existantes
-        console.log('=== AUTO-LAUNCHING EXISTING ASSIGNED PRESENTATION ===');
-        
-        // Annuler le timer de présentation par défaut si actif
-        if (autoLaunchDefaultTimer) {
-          clearTimeout(autoLaunchDefaultTimer);
-          setAutoLaunchDefaultTimer(null);
-        }
-        
-        // Masquer la notification de présentation par défaut
-        setShowDefaultPresentationPrompt(false);
-        
-        // Mettre à jour le statut
-        statusService.updatePresentationStatus(
-          existing.presentation_id,
-          existing.presentation_name,
-          0,
-          0,
-          existing.loop_mode,
-          existing.auto_play
-        );
-        
-        // Lancer immédiatement
         setTimeout(() => {
           launchAssignedPresentation(existing);
         }, 2000);
       }
     } catch (error) {
-      console.log('=== ASSIGNMENT MONITORING FAILED ===');
-      console.log('Error:', error);
-      
-      if (error instanceof Error && error.message.includes('Endpoint not found')) {
-        console.log('⚠️ Assignment features not available on this server version');
-        setAssignmentCheckStarted(false);
-      } else {
-        console.error('Unexpected error starting assignment monitoring:', error);
-        setAssignmentCheckStarted(false);
-      }
+      console.log('Assignment monitoring failed:', error);
     }
   };
 
   const startDefaultPresentationMonitoring = async () => {
-    if (defaultCheckStarted) {
-      console.log('Default presentation check already started');
-      return;
-    }
-
-    console.log('=== STARTING DEFAULT PRESENTATION MONITORING ===');
-    setDefaultCheckStarted(true);
-    
     try {
       await apiService.startDefaultPresentationCheck((defaultPres: DefaultPresentation) => {
         console.log('=== DEFAULT PRESENTATION DETECTED ===');
-        console.log('Presentation ID:', defaultPres.presentation_id);
-        console.log('Presentation name:', defaultPres.presentation_name);
-        
         setDefaultPresentation(defaultPres);
-        
-        // Ne pas afficher la notification si une présentation assignée est active
-        if (!assignedPresentation) {
-          // Afficher une notification discrète
-          setShowDefaultPresentationPrompt(true);
-          
-          // Masquer automatiquement après 10 secondes
-          setTimeout(() => {
-            setShowDefaultPresentationPrompt(false);
-          }, 10000);
-
-          // Auto-lancement après 30 secondes si aucune interaction
-          const timer = setTimeout(() => {
-            console.log('=== AUTO-LAUNCHING DEFAULT PRESENTATION AFTER TIMEOUT ===');
-            launchDefaultPresentation(defaultPres);
-          }, 30000);
-          
-          setAutoLaunchDefaultTimer(timer);
-        }
       });
 
-      console.log('=== CHECKING FOR EXISTING DEFAULT PRESENTATION ===');
       const existing = await apiService.checkForDefaultPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING DEFAULT PRESENTATION ===', existing);
         setDefaultPresentation(existing);
-        
-        // Ne pas afficher la notification si une présentation assignée est active
-        if (!assignedPresentation) {
-          // Afficher immédiatement la notification pour la présentation par défaut existante
-          setShowDefaultPresentationPrompt(true);
-          
-          // Auto-lancement après 30 secondes
-          const timer = setTimeout(() => {
-            console.log('=== AUTO-LAUNCHING EXISTING DEFAULT PRESENTATION ===');
-            launchDefaultPresentation(existing);
-          }, 30000);
-          
-          setAutoLaunchDefaultTimer(timer);
-        }
       }
     } catch (error) {
-      console.log('=== DEFAULT PRESENTATION MONITORING FAILED ===');
-      console.log('Error:', error);
-      
-      if (error instanceof Error && error.message.includes('Endpoint not found')) {
-        console.log('⚠️ Default presentation features not available on this server version');
-        setDefaultCheckStarted(false);
-      } else {
-        console.error('Unexpected error starting default presentation monitoring:', error);
-        setDefaultCheckStarted(false);
-      }
+      console.log('Default presentation monitoring failed:', error);
     }
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
     console.log('=== LAUNCHING ASSIGNED PRESENTATION ===');
-    console.log('Presentation ID:', assigned.presentation_id);
-    console.log('Auto play:', assigned.auto_play);
-    console.log('Loop mode:', assigned.loop_mode);
-    
-    // Annuler le timer de présentation par défaut si actif
-    if (autoLaunchDefaultTimer) {
-      clearTimeout(autoLaunchDefaultTimer);
-      setAutoLaunchDefaultTimer(null);
-    }
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
-    // Forcer auto_play et loop_mode à true pour les présentations assignées
     const params = new URLSearchParams({
       auto_play: 'true',
       loop_mode: 'true',
@@ -415,23 +165,11 @@ export default function HomeScreen() {
     });
     
     const url = `/presentation/${assigned.presentation_id}?${params.toString()}`;
-    console.log('Navigating to:', url);
-    
     router.push(url);
   };
 
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
     console.log('=== LAUNCHING DEFAULT PRESENTATION ===');
-    console.log('Presentation ID:', defaultPres.presentation_id);
-    
-    // Annuler le timer si actif
-    if (autoLaunchDefaultTimer) {
-      clearTimeout(autoLaunchDefaultTimer);
-      setAutoLaunchDefaultTimer(null);
-    }
-    
-    // Masquer la notification
-    setShowDefaultPresentationPrompt(false);
     
     const params = new URLSearchParams({
       auto_play: 'true',
@@ -441,43 +179,13 @@ export default function HomeScreen() {
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('Navigating to:', url);
-    
     router.push(url);
   };
 
-  const cancelDefaultAutoLaunch = () => {
-    if (autoLaunchDefaultTimer) {
-      clearTimeout(autoLaunchDefaultTimer);
-      setAutoLaunchDefaultTimer(null);
-    }
-    setShowDefaultPresentationPrompt(false);
-  };
-
-  // Fonction de rafraîchissement manuel
   const handleManualRefresh = async () => {
     setRefreshing(true);
     await checkConnection();
     await loadPresentations();
-    
-    if (apiService.isDeviceRegistered() && assignmentCheckStarted) {
-      console.log('=== REFRESHING ASSIGNMENT CHECK ===');
-      try {
-        await apiService.checkForAssignedPresentation();
-      } catch (error) {
-        console.log('Assignment refresh failed (normal if endpoint not available):', error);
-      }
-    }
-
-    if (apiService.isDeviceRegistered() && defaultCheckStarted) {
-      console.log('=== REFRESHING DEFAULT PRESENTATION CHECK ===');
-      try {
-        await apiService.checkForDefaultPresentation();
-      } catch (error) {
-        console.log('Default presentation refresh failed (normal if endpoint not available):', error);
-      }
-    }
-    
     setRefreshing(false);
   };
 
@@ -485,25 +193,16 @@ export default function HomeScreen() {
     await handleManualRefresh();
   };
 
-  // Lancer une présentation avec mode boucle automatique
   const playPresentation = (presentation: Presentation) => {
-    // Annuler le timer de présentation par défaut si actif
-    if (autoLaunchDefaultTimer) {
-      clearTimeout(autoLaunchDefaultTimer);
-      setAutoLaunchDefaultTimer(null);
-    }
-    
-    // Mettre à jour le statut
     statusService.updatePresentationStatus(
       presentation.id,
       presentation.name || presentation.nom || 'Présentation',
       0,
       presentation.slide_count,
-      true, // loop mode
-      true  // auto play
+      true,
+      true
     );
     
-    // Lancer automatiquement en mode boucle
     const params = new URLSearchParams({
       auto_play: 'true',
       loop_mode: 'true',
@@ -511,8 +210,6 @@ export default function HomeScreen() {
     });
     
     const url = `/presentation/${presentation.id}?${params.toString()}`;
-    console.log('Launching presentation with auto-loop:', url);
-    
     router.push(url);
   };
 
@@ -533,16 +230,8 @@ export default function HomeScreen() {
 
     return (
       <TouchableOpacity 
-        style={[
-          styles.statusCard, 
-          { borderLeftColor: config.color },
-          focusedIndex === -1 && styles.focusedCard
-        ]}
+        style={[styles.statusCard, { borderLeftColor: config.color }]}
         onPress={goToSettings}
-        accessible={true}
-        accessibilityLabel={`Statut de connexion: ${config.text}. Appuyez pour aller aux paramètres.`}
-        accessibilityRole="button"
-        onFocus={() => setFocusedIndex(-1)}
       >
         <View style={styles.statusHeader}>
           <IconComponent size={20} color={config.color} />
@@ -554,21 +243,6 @@ export default function HomeScreen() {
         <Text style={styles.serverUrl}>
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
-        {connectionStatus === 'not_configured' && (
-          <Text style={styles.configHint}>
-            Configurez l'URL de votre serveur pour commencer
-          </Text>
-        )}
-        {assignmentCheckStarted && (
-          <Text style={styles.assignmentStatus}>
-            ✓ Surveillance des assignations active
-          </Text>
-        )}
-        {defaultCheckStarted && (
-          <Text style={styles.assignmentStatus}>
-            ✓ Surveillance des présentations par défaut active
-          </Text>
-        )}
       </TouchableOpacity>
     );
   };
@@ -578,8 +252,8 @@ export default function HomeScreen() {
       online: { color: '#10b981', text: 'En ligne', icon: Activity },
       offline: { color: '#6b7280', text: 'Hors ligne', icon: WifiOff },
       playing: { color: '#3b82f6', text: 'En diffusion', icon: Play },
-      paused: { color: '#f59e0b', text: 'En pause', icon: Pause },
-      error: { color: '#ef4444', text: 'Erreur', icon: AlertCircle },
+      paused: { color: '#f59e0b', text: 'En pause', icon: Play },
+      error: { color: '#ef4444', text: 'Erreur', icon: WifiOff },
     };
 
     const config = statusConfig[deviceStatus];
@@ -590,27 +264,11 @@ export default function HomeScreen() {
         <View style={styles.statusHeader}>
           <IconComponent size={20} color={config.color} />
           <Text style={[styles.statusText, { color: config.color }]}>
-            Statut appareil: {config.text}
+            Statut: {config.text}
           </Text>
-          <Zap size={16} color="#9ca3af" />
         </View>
-        
-        {currentPresentationInfo.name && (
-          <View style={styles.currentPresentationInfo}>
-            <Text style={styles.currentPresentationName}>
-              📺 {currentPresentationInfo.name}
-            </Text>
-            {currentPresentationInfo.slideIndex !== undefined && currentPresentationInfo.totalSlides && (
-              <Text style={styles.currentSlideInfo}>
-                Slide {currentPresentationInfo.slideIndex + 1} / {currentPresentationInfo.totalSlides}
-                {currentPresentationInfo.isLooping && ' • Mode boucle'}
-              </Text>
-            )}
-          </View>
-        )}
-        
         <Text style={styles.deviceId}>
-          ID: {apiService.getDeviceId()}
+          ID: {apiService.getDeviceId()} • Version: 1.2.0
         </Text>
       </View>
     );
@@ -623,16 +281,9 @@ export default function HomeScreen() {
       <View style={styles.assignedSection}>
         <Text style={styles.assignedTitle}>📌 Présentation assignée</Text>
         <TouchableOpacity
-          style={[
-            styles.assignedCard,
-            focusedIndex === -2 && styles.focusedCard
-          ]}
+          style={styles.assignedCard}
           onPress={() => launchAssignedPresentation(assignedPresentation)}
           activeOpacity={0.8}
-          accessible={true}
-          accessibilityLabel={`Présentation assignée: ${assignedPresentation.presentation_name}. Appuyez pour lancer.`}
-          accessibilityRole="button"
-          onFocus={() => setFocusedIndex(-2)}
         >
           <LinearGradient
             colors={['#f59e0b', '#d97706']}
@@ -680,16 +331,9 @@ export default function HomeScreen() {
       <View style={styles.assignedSection}>
         <Text style={styles.assignedTitle}>⭐ Présentation par défaut</Text>
         <TouchableOpacity
-          style={[
-            styles.assignedCard,
-            focusedIndex === 0 && styles.focusedCard
-          ]}
+          style={styles.assignedCard}
           onPress={() => launchDefaultPresentation(defaultPresentation)}
           activeOpacity={0.8}
-          accessible={true}
-          accessibilityLabel={`Présentation par défaut: ${defaultPresentation.presentation_name}. Appuyez pour lancer.`}
-          accessibilityRole="button"
-          onFocus={() => setFocusedIndex(0)}
         >
           <LinearGradient
             colors={['#8b5cf6', '#7c3aed']}
@@ -726,53 +370,6 @@ export default function HomeScreen() {
     );
   };
 
-  const renderDefaultPresentationPrompt = () => {
-    if (!showDefaultPresentationPrompt || !defaultPresentation) return null;
-
-    return (
-      <View style={styles.promptOverlay}>
-        <View style={styles.promptCard}>
-          <LinearGradient
-            colors={['#8b5cf6', '#7c3aed']}
-            style={styles.promptGradient}
-          >
-            <View style={styles.promptHeader}>
-              <Star size={20} color="#ffffff" />
-              <Text style={styles.promptTitle}>Présentation par défaut disponible</Text>
-              <TouchableOpacity
-                style={styles.promptCloseButton}
-                onPress={cancelDefaultAutoLaunch}
-              >
-                <Text style={styles.promptCloseText}>×</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.promptMessage}>
-              "{defaultPresentation.presentation_name}" va se lancer automatiquement dans 30 secondes
-            </Text>
-            
-            <View style={styles.promptActions}>
-              <TouchableOpacity
-                style={styles.promptButton}
-                onPress={() => launchDefaultPresentation(defaultPresentation)}
-              >
-                <Play size={16} color="#ffffff" />
-                <Text style={styles.promptButtonText}>Lancer maintenant</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.promptButton, styles.promptCancelButton]}
-                onPress={cancelDefaultAutoLaunch}
-              >
-                <Text style={styles.promptButtonText}>Annuler</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </View>
-      </View>
-    );
-  };
-
   const renderPresentationCard = (presentation: Presentation, index: number) => {
     const gradientColors = [
       ['#667eea', '#764ba2'],
@@ -782,22 +379,13 @@ export default function HomeScreen() {
     ];
     
     const colors = gradientColors[index % gradientColors.length];
-    const adjustedIndex = index + (defaultPresentation ? 1 : 0);
-    const isFocused = focusedIndex === adjustedIndex;
 
     return (
       <TouchableOpacity
         key={presentation.id}
-        style={[
-          styles.presentationCard,
-          isFocused && styles.focusedCard
-        ]}
+        style={styles.presentationCard}
         onPress={() => playPresentation(presentation)}
         activeOpacity={0.8}
-        accessible={true}
-        accessibilityLabel={`Présentation: ${presentation.name}. ${presentation.slide_count} slides. Appuyez pour lancer en mode boucle automatique.`}
-        accessibilityRole="button"
-        onFocus={() => setFocusedIndex(adjustedIndex)}
       >
         <LinearGradient
           colors={colors}
@@ -820,7 +408,6 @@ export default function HomeScreen() {
               {presentation.description || 'Aucune description disponible'}
             </Text>
             
-            {/* Indicateur de lecture automatique en boucle */}
             <View style={styles.autoLoopIndicator}>
               <Repeat size={14} color="rgba(255, 255, 255, 0.9)" />
               <Text style={styles.autoLoopText}>Lecture automatique en boucle</Text>
@@ -831,7 +418,7 @@ export default function HomeScreen() {
             <Text style={styles.createdDate}>
               {new Date(presentation.created_at).toLocaleDateString('fr-FR')}
             </Text>
-            <View style={[styles.playButton, isFocused && styles.focusedPlayButton]}>
+            <View style={styles.playButton}>
               <Play size={18} color="#ffffff" fill="#ffffff" />
             </View>
           </View>
@@ -849,7 +436,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Vérification des assignations...</Text>
+          <Text style={styles.loadingSubtext}>Version 1.2.0 - Simplifiée</Text>
         </LinearGradient>
       </View>
     );
@@ -872,33 +459,23 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Contrôle à distance activé
+                Fire TV Stick - Version 1.2.0 Simplifiée
               </Text>
               
-              <View style={styles.headerButtons}>
-                {/* Bouton de rafraîchissement dans l'en-tête */}
-                <TouchableOpacity
-                  style={[
-                    styles.refreshButton,
-                    focusedIndex === -3 && styles.focusedRefreshButton
-                  ]}
-                  onPress={handleManualRefresh}
-                  disabled={refreshing}
-                  accessible={true}
-                  accessibilityLabel="Rafraîchir les données"
-                  accessibilityRole="button"
-                  onFocus={() => setFocusedIndex(-3)}
-                >
-                  <RefreshCw 
-                    size={20} 
-                    color="#ffffff" 
-                    style={refreshing ? styles.spinning : undefined}
-                  />
-                  <Text style={styles.refreshButtonText}>
-                    {refreshing ? 'Actualisation...' : 'Actualiser'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={handleManualRefresh}
+                disabled={refreshing}
+              >
+                <RefreshCw 
+                  size={20} 
+                  color="#ffffff" 
+                  style={refreshing ? styles.spinning : undefined}
+                />
+                <Text style={styles.refreshButtonText}>
+                  {refreshing ? 'Actualisation...' : 'Actualiser'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </LinearGradient>
@@ -914,7 +491,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Lecture automatique en boucle activée • 📡 Contrôle à distance
+              🔄 Lecture automatique en boucle • Version simplifiée
             </Text>
           </View>
           
@@ -928,9 +505,6 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.configButton}
                 onPress={goToSettings}
-                accessible={true}
-                accessibilityLabel="Configurer le serveur"
-                accessibilityRole="button"
               >
                 <Settings size={20} color="#ffffff" />
                 <Text style={styles.configButtonText}>Configurer le serveur</Text>
@@ -941,18 +515,12 @@ export default function HomeScreen() {
               <WifiOff size={64} color="#ef4444" />
               <Text style={styles.disconnectedTitle}>Connexion impossible</Text>
               <Text style={styles.disconnectedMessage}>
-                Impossible de se connecter au serveur. Vérifiez:
-                {'\n'}• L'URL du serveur dans les paramètres
-                {'\n'}• Que le serveur est accessible
-                {'\n'}• Votre connexion réseau
+                Impossible de se connecter au serveur.
               </Text>
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={styles.retryButton}
                   onPress={handleManualRefresh}
-                  accessible={true}
-                  accessibilityLabel="Réessayer la connexion"
-                  accessibilityRole="button"
                 >
                   <RefreshCw size={20} color="#ffffff" />
                   <Text style={styles.retryButtonText}>Réessayer</Text>
@@ -960,9 +528,6 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.settingsButton}
                   onPress={goToSettings}
-                  accessible={true}
-                  accessibilityLabel="Aller aux paramètres"
-                  accessibilityRole="button"
                 >
                   <Settings size={20} color="#ffffff" />
                   <Text style={styles.settingsButtonText}>Paramètres</Text>
@@ -975,14 +540,10 @@ export default function HomeScreen() {
               <Text style={styles.emptyTitle}>Aucune présentation</Text>
               <Text style={styles.emptyMessage}>
                 Aucune présentation disponible sur le serveur.
-                {'\n'}Créez des présentations depuis votre interface web.
               </Text>
               <TouchableOpacity
                 style={styles.refreshButton}
                 onPress={handleManualRefresh}
-                accessible={true}
-                accessibilityLabel="Actualiser la liste"
-                accessibilityRole="button"
               >
                 <RefreshCw size={20} color="#ffffff" />
                 <Text style={styles.refreshButtonText}>Actualiser</Text>
@@ -996,31 +557,7 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
-
-        <View style={styles.infoSection}>
-          <LinearGradient
-            colors={['#43e97b', '#38f9d7']}
-            style={styles.infoCard}
-          >
-            <Monitor size={32} color="#ffffff" />
-            <Text style={styles.infoTitle}>Application Enhanced avec Contrôle à Distance</Text>
-            <Text style={styles.infoText}>
-              Cette application se connecte à votre serveur de présentations.
-              {'\n'}Serveur: {apiService.getServerUrl() || 'Non configuré'}
-              {'\n'}Device ID: {apiService.getDeviceId()}
-              {'\n'}Statut: {deviceStatus}
-              {'\n'}Surveillance: {assignmentCheckStarted ? 'Active' : 'Inactive'}
-              {'\n'}Mode: Lecture automatique en boucle
-              {'\n'}Contrôle à distance: Activé
-              {defaultPresentation && '\n'}Présentation par défaut: Configurée
-              {currentPresentationInfo.name && `\n'}En cours: ${currentPresentationInfo.name}`}
-            </Text>
-          </LinearGradient>
-        </View>
       </ScrollView>
-
-      {/* Notification discrète pour présentation par défaut */}
-      {renderDefaultPresentationPrompt()}
     </View>
   );
 }
@@ -1081,11 +618,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
   refreshButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 25,
@@ -1094,17 +626,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  focusedRefreshButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderWidth: 4,
-    borderColor: '#ffffff',
-    transform: [{ scale: 1.1 }],
-    elevation: 8,
-    shadowColor: '#ffffff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    marginTop: 8,
   },
   refreshButtonText: {
     color: '#ffffff',
@@ -1157,34 +679,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontFamily: 'monospace',
     marginBottom: 4,
-  },
-  configHint: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  assignmentStatus: {
-    fontSize: 12,
-    color: '#10b981',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  currentPresentationInfo: {
-    marginTop: 8,
-    padding: 8,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-  },
-  currentPresentationName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  currentSlideInfo: {
-    fontSize: 12,
-    color: '#6b7280',
   },
   deviceId: {
     fontSize: 12,
@@ -1389,20 +883,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  focusedCard: {
-    borderWidth: 4,
-    borderColor: '#3b82f6',
-    transform: [{ scale: 1.05 }],
-    elevation: 16,
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-  },
-  focusedPlayButton: {
-    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-    transform: [{ scale: 1.1 }],
-  },
   configurationNeeded: {
     alignItems: 'center',
     padding: 40,
@@ -1526,106 +1006,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,
-  },
-  infoSection: {
-    padding: 20,
-  },
-  infoCard: {
-    padding: 24,
-    borderRadius: 20,
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginTop: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  infoText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  promptOverlay: {
-    position: 'absolute',
-    top: 100,
-    right: 20,
-    zIndex: 1000,
-  },
-  promptCard: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    maxWidth: 320,
-  },
-  promptGradient: {
-    padding: 16,
-  },
-  promptHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  promptTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 8,
-  },
-  promptCloseButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  promptCloseText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  promptMessage: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 12,
-    marginBottom: 12,
-    lineHeight: 16,
-  },
-  promptActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  promptButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  promptCancelButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  promptButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-    flex: 1,
   },
 });
