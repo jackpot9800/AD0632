@@ -9,27 +9,12 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
-  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Play, Pause, Monitor, Clock, CircleAlert as AlertCircle, RefreshCw, Repeat } from 'lucide-react-native';
 import { apiService, PresentationDetails, Slide } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
-
-// Importation conditionnelle de expo-keep-awake
-let activateKeepAwake = () => {};
-let deactivateKeepAwake = () => {};
-
-if (Platform.OS !== 'web') {
-  try {
-    const keepAwake = require('expo-keep-awake');
-    activateKeepAwake = keepAwake.activateKeepAwake || (() => {});
-    deactivateKeepAwake = keepAwake.deactivateKeepAwake || (() => {});
-  } catch (error) {
-    console.log('Keep awake not available:', error);
-  }
-}
 
 const { width, height } = Dimensions.get('window');
 
@@ -80,11 +65,6 @@ export default function PresentationScreen() {
       timeRemainingIntervalRef.current = null;
     }
     
-    // Désactiver keep-awake
-    if (Platform.OS !== 'web') {
-      deactivateKeepAwake();
-    }
-    
     // Réinitialiser les refs
     slideStartTimeRef.current = 0;
     currentSlideDurationRef.current = 0;
@@ -92,11 +72,6 @@ export default function PresentationScreen() {
 
   useEffect(() => {
     loadPresentation();
-    
-    // Activer keep-awake pour empêcher la mise en veille
-    if (Platform.OS !== 'web') {
-      activateKeepAwake();
-    }
     
     // Configurer selon les paramètres
     if (loop_mode === 'true') {

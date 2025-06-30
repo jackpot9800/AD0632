@@ -8,27 +8,12 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
-
-// Importation conditionnelle de expo-keep-awake
-let activateKeepAwake = () => {};
-let deactivateKeepAwake = () => {};
-
-if (Platform.OS !== 'web') {
-  try {
-    const keepAwake = require('expo-keep-awake');
-    activateKeepAwake = keepAwake.activateKeepAwake || (() => {});
-    deactivateKeepAwake = keepAwake.deactivateKeepAwake || (() => {});
-  } catch (error) {
-    console.log('Keep awake not available:', error);
-  }
-}
 
 export default function HomeScreen() {
   const [presentations, setPresentations] = useState<Presentation[]>([]);
@@ -42,11 +27,6 @@ export default function HomeScreen() {
   useEffect(() => {
     initializeApp();
     
-    // Activer keep-awake pour empêcher la mise en veille
-    if (Platform.OS !== 'web') {
-      activateKeepAwake();
-    }
-    
     // Démarrer le monitoring périodique toutes les 5 minutes
     const monitoringInterval = setInterval(() => {
       console.log('=== PERIODIC MONITORING CHECK v1.5.1 ===');
@@ -56,9 +36,6 @@ export default function HomeScreen() {
     return () => {
       clearInterval(monitoringInterval);
       statusService.stop();
-      if (Platform.OS !== 'web') {
-        deactivateKeepAwake();
-      }
     };
   }, []);
 
