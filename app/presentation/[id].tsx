@@ -411,6 +411,22 @@ export default function PresentationScreen() {
       
       const data = await apiService.getPresentation(Number(id));
       console.log('Loaded presentation:', data);
+      console.log('Number of slides:', data.slides.length);
+      
+      // Vérifier que nous avons bien des slides
+      if (!data.slides || data.slides.length === 0) {
+        throw new Error('Aucune slide trouvée dans cette présentation');
+      }
+      
+      // Log détaillé des slides
+      data.slides.forEach((slide, index) => {
+        console.log(`Slide ${index + 1}:`, {
+          id: slide.id,
+          name: slide.name,
+          duration: slide.duration,
+          image_url: slide.image_url
+        });
+      });
       
       setPresentation(data);
       
@@ -461,13 +477,30 @@ export default function PresentationScreen() {
       return;
     }
 
+    // Vérifier que l'index est valide
+    if (currentSlideIndex >= presentation.slides.length) {
+      console.error('=== INVALID SLIDE INDEX ===');
+      console.error('Current index:', currentSlideIndex);
+      console.error('Total slides:', presentation.slides.length);
+      setCurrentSlideIndex(0);
+      return;
+    }
+
     stopSlideTimer();
 
     const currentSlide = presentation.slides[currentSlideIndex];
+    if (!currentSlide) {
+      console.error('=== CURRENT SLIDE NOT FOUND ===');
+      console.error('Index:', currentSlideIndex);
+      console.error('Available slides:', presentation.slides.length);
+      return;
+    }
+
     const slideDuration = currentSlide.duration * 1000;
     
-    console.log(`=== STARTING NEW TIMER FOR SLIDE ${currentSlideIndex + 1} ===`);
+    console.log(`=== STARTING NEW TIMER FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
     console.log(`Slide duration: ${currentSlide.duration}s (${slideDuration}ms)`);
+    console.log(`Slide name: ${currentSlide.name}`);
     
     setTimeRemaining(slideDuration);
     lastSlideChangeRef.current = Date.now();
@@ -477,7 +510,7 @@ export default function PresentationScreen() {
         const newTime = prev - 100;
         
         if (newTime <= 0) {
-          console.log(`=== TIMER FINISHED FOR SLIDE ${currentSlideIndex + 1} ===`);
+          console.log(`=== TIMER FINISHED FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
           nextSlide();
           return 0;
         }
@@ -511,7 +544,18 @@ export default function PresentationScreen() {
   }, [isLooping]);
 
   const nextSlide = useCallback(() => {
-    if (!presentation) return;
+    if (!presentation || presentation.slides.length === 0) {
+      console.log('=== NO PRESENTATION OR SLIDES FOR NEXT ===');
+      return;
+    }
+    
+    // Éviter les changements multiples simultanés
+    if (slideChangeInProgressRef.current) {
+      console.log('=== SLIDE CHANGE ALREADY IN PROGRESS ===');
+      return;
+    }
+    
+    slideChangeInProgressRef.current = true;
     
     console.log(`=== NEXT SLIDE LOGIC ===`);
     console.log(`Current: ${currentSlideIndex + 1}/${presentation.slides.length}`);
@@ -528,7 +572,7 @@ export default function PresentationScreen() {
     
     if (currentSlideIndex < presentation.slides.length - 1) {
       const nextIndex = currentSlideIndex + 1;
-      console.log(`Moving to slide ${nextIndex + 1}`);
+      console.log(`Moving to slide ${nextIndex + 1}/${presentation.slides.length}`);
       setCurrentSlideIndex(nextIndex);
       lastSlideChangeRef.current = Date.now();
     } else {
@@ -581,6 +625,11 @@ export default function PresentationScreen() {
         }
       }
     }
+    
+    // Réinitialiser le flag après un délai
+    setTimeout(() => {
+      slideChangeInProgressRef.current = false;
+    }, 500);
   }, [presentation, currentSlideIndex, isLooping, isPlaying, assigned, loopCount, memoryOptimization]);
 
   const previousSlide = useCallback(() => {
@@ -729,9 +778,28 @@ export default function PresentationScreen() {
     );
   }
 
-  const currentSlide = presentation.slides[currentSlideIndex];
-  const progress = presentation.slides[currentSlideIndex].duration > 0 
-    ? ((presentation.slides[currentSlideIndex].duration * 1000 - timeRemaining) / (presentation.slides[currentSlideIndex].duration * 1000)) * 100
+  // Vérification de sécurité pour l'index de slide
+  const safeCurrentSlideIndex = Math.min(currentSlideIndex, presentation.slides.length - 1);
+  const currentSlide = presentation.slides[safeCurrentSlideIndex];
+  
+  if (!currentSlide) {
+    console.error('=== CRITICAL ERROR: NO CURRENT SLIDE ===');
+    console.error('Safe index:', safeCurrentSlideIndex);
+    console.error('Total slides:', presentation.slides.length);
+    console.error('Original index:', currentSlideIndex);
+    
+    // Forcer un retour à la première slide
+    setCurrentSlideIndex(0);
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Correction de l'index de slide...</Text>
+      </View>
+    );
+  }
+
+  const progress = currentSlide.duration > 0 
+    ? ((currentSlide.duration * 1000 - timeRemaining) / (currentSlide.duration * 1000)) * 100
     : 0;
 
   return (
@@ -743,7 +811,7 @@ export default function PresentationScreen() {
         onPress={toggleControls}
         activeOpacity={1}
         accessible={true}
-        accessibilityLabel={`Slide ${currentSlideIndex + 1} sur ${presentation.slides.length}. Appuyez pour afficher les contrôles.`}
+        accessibilityLabel={`Slide ${safeCurrentSlideIndex + 1} sur ${presentation.slides.length}. Appuyez pour afficher les contrôles.`}
       >
         {imageLoadError[currentSlide.id] ? (
           <View style={styles.imageErrorContainer}>
@@ -837,7 +905,7 @@ export default function PresentationScreen() {
                   {memoryOptimization && ' (Optimisé)'}
                 </Text>
                 <Text style={styles.slideCounter}>
-                  {currentSlideIndex + 1} / {presentation.slides.length}
+                  {safeCurrentSlideIndex + 1} / {presentation.slides.length}
                   {isLooping && loopCount > 0 && ` • Boucle ${loopCount}`}
                 </Text>
               </View>
@@ -855,17 +923,17 @@ export default function PresentationScreen() {
                 <TouchableOpacity
                   style={[
                     styles.controlButton, 
-                    currentSlideIndex === 0 && styles.controlButtonDisabled,
+                    safeCurrentSlideIndex === 0 && styles.controlButtonDisabled,
                     focusedControlIndex === 0 && styles.focusedControl
                   ]}
                   onPress={previousSlide}
-                  disabled={currentSlideIndex === 0}
+                  disabled={safeCurrentSlideIndex === 0}
                   accessible={true}
                   accessibilityLabel="Slide précédente"
                   accessibilityRole="button"
                   onFocus={() => setFocusedControlIndex(0)}
                 >
-                  <SkipBack size={24} color={currentSlideIndex === 0 ? "#6b7280" : "#ffffff"} />
+                  <SkipBack size={24} color={safeCurrentSlideIndex === 0 ? "#6b7280" : "#ffffff"} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -890,17 +958,17 @@ export default function PresentationScreen() {
                 <TouchableOpacity
                   style={[
                     styles.controlButton, 
-                    currentSlideIndex === presentation.slides.length - 1 && !isLooping && styles.controlButtonDisabled,
+                    safeCurrentSlideIndex === presentation.slides.length - 1 && !isLooping && styles.controlButtonDisabled,
                     focusedControlIndex === 2 && styles.focusedControl
                   ]}
                   onPress={nextSlide}
-                  disabled={currentSlideIndex === presentation.slides.length - 1 && !isLooping}
+                  disabled={safeCurrentSlideIndex === presentation.slides.length - 1 && !isLooping}
                   accessible={true}
                   accessibilityLabel="Slide suivante"
                   accessibilityRole="button"
                   onFocus={() => setFocusedControlIndex(2)}
                 >
-                  <SkipForward size={24} color={currentSlideIndex === presentation.slides.length - 1 && !isLooping ? "#6b7280" : "#ffffff"} />
+                  <SkipForward size={24} color={safeCurrentSlideIndex === presentation.slides.length - 1 && !isLooping ? "#6b7280" : "#ffffff"} />
                 </TouchableOpacity>
               </View>
 
@@ -943,7 +1011,7 @@ export default function PresentationScreen() {
                     key={slide.id}
                     style={[
                       styles.thumbnail,
-                      index === currentSlideIndex && styles.activeThumbnail,
+                      index === safeCurrentSlideIndex && styles.activeThumbnail,
                       focusedControlIndex === 5 + index && styles.focusedThumbnail,
                     ]}
                     onPress={() => goToSlide(index)}
