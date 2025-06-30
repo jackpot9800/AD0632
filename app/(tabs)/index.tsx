@@ -24,21 +24,10 @@ export default function HomeScreen() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing' | 'not_configured'>('testing');
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
-  const [lastMonitoringCheck, setLastMonitoringCheck] = useState<number>(0);
 
   useEffect(() => {
     initializeApp();
     initializeStatusService();
-    
-    // Démarrer le monitoring périodique toutes les 5 minutes
-    const monitoringInterval = setInterval(() => {
-      console.log('=== PERIODIC MONITORING CHECK v1.3.1 ===');
-      periodicMonitoringCheck();
-    }, 5 * 60 * 1000); // 5 minutes
-    
-    return () => {
-      clearInterval(monitoringInterval);
-    };
   }, []);
 
   const initializeApp = async () => {
@@ -58,9 +47,9 @@ export default function HomeScreen() {
     await loadPresentations();
     
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.3.1 ===');
-      await startAssignmentMonitoring();
-      await startDefaultPresentationMonitoring();
+      console.log('=== DEVICE IS REGISTERED AND CONNECTED ===');
+      startAssignmentMonitoring();
+      startDefaultPresentationMonitoring();
     }
     
     setLoading(false);
@@ -72,54 +61,6 @@ export default function HomeScreen() {
       statusService.updateStatus({ status: 'online' });
     } catch (error) {
       console.error('Failed to initialize status service:', error);
-    }
-  };
-
-  const periodicMonitoringCheck = async () => {
-    const now = Date.now();
-    
-    // Éviter les vérifications trop fréquentes
-    if (now - lastMonitoringCheck < 4 * 60 * 1000) { // 4 minutes minimum
-      return;
-    }
-    
-    setLastMonitoringCheck(now);
-    
-    try {
-      console.log('=== PERIODIC CHECK: Refreshing presentations ===');
-      await loadPresentations();
-      
-      if (apiService.isDeviceRegistered()) {
-        console.log('=== PERIODIC CHECK: Checking assignments ===');
-        
-        // Vérifier les nouvelles assignations
-        const newAssigned = await apiService.checkForAssignedPresentation();
-        if (newAssigned && (!assignedPresentation || newAssigned.id !== assignedPresentation.id)) {
-          console.log('=== NEW ASSIGNED PRESENTATION DETECTED ===');
-          setAssignedPresentation(newAssigned);
-          
-          // Auto-lancer immédiatement si nouvelle assignation
-          setTimeout(() => {
-            launchAssignedPresentation(newAssigned);
-          }, 2000);
-        }
-        
-        // Vérifier les présentations par défaut
-        const newDefault = await apiService.checkForDefaultPresentation();
-        if (newDefault && (!defaultPresentation || newDefault.presentation_id !== defaultPresentation.presentation_id)) {
-          console.log('=== NEW DEFAULT PRESENTATION DETECTED ===');
-          setDefaultPresentation(newDefault);
-          
-          // Auto-lancer seulement s'il n'y a pas d'assignation active
-          if (!assignedPresentation) {
-            setTimeout(() => {
-              launchDefaultPresentation(newDefault);
-            }, 3000);
-          }
-        }
-      }
-    } catch (error) {
-      console.log('Periodic monitoring check failed:', error);
     }
   };
 
@@ -165,25 +106,18 @@ export default function HomeScreen() {
 
   const startAssignmentMonitoring = async () => {
     try {
-      console.log('=== STARTING ASSIGNMENT MONITORING v1.3.1 ===');
-      
       await apiService.startAssignmentCheck((assigned: AssignedPresentation) => {
-        console.log('=== ASSIGNED PRESENTATION DETECTED VIA CALLBACK ===');
+        console.log('=== ASSIGNED PRESENTATION DETECTED ===');
         setAssignedPresentation(assigned);
         
-        // Auto-lancer immédiatement
         setTimeout(() => {
           launchAssignedPresentation(assigned);
         }, 1000);
       });
 
-      // Vérifier immédiatement s'il y a une assignation existante
       const existing = await apiService.checkForAssignedPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION ===');
         setAssignedPresentation(existing);
-        
-        // Auto-lancer après un délai
         setTimeout(() => {
           launchAssignedPresentation(existing);
         }, 2000);
@@ -195,32 +129,14 @@ export default function HomeScreen() {
 
   const startDefaultPresentationMonitoring = async () => {
     try {
-      console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.3.1 ===');
-      
       await apiService.startDefaultPresentationCheck((defaultPres: DefaultPresentation) => {
-        console.log('=== DEFAULT PRESENTATION DETECTED VIA CALLBACK ===');
+        console.log('=== DEFAULT PRESENTATION DETECTED ===');
         setDefaultPresentation(defaultPres);
-        
-        // Auto-lancer seulement s'il n'y a pas d'assignation
-        if (!assignedPresentation) {
-          setTimeout(() => {
-            launchDefaultPresentation(defaultPres);
-          }, 3000);
-        }
       });
 
-      // Vérifier immédiatement s'il y a une présentation par défaut
       const existing = await apiService.checkForDefaultPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING DEFAULT PRESENTATION ===');
         setDefaultPresentation(existing);
-        
-        // Auto-lancer seulement s'il n'y a pas d'assignation et après un délai plus long
-        if (!assignedPresentation) {
-          setTimeout(() => {
-            launchDefaultPresentation(existing);
-          }, 5000);
-        }
       }
     } catch (error) {
       console.log('Default presentation monitoring failed:', error);
@@ -228,37 +144,31 @@ export default function HomeScreen() {
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.3.1 ===');
-    console.log('Presentation ID:', assigned.presentation_id);
-    console.log('Auto play:', assigned.auto_play);
-    console.log('Loop mode:', assigned.loop_mode);
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
     const params = new URLSearchParams({
-      auto_play: 'true', // Forcer auto_play pour les assignations
-      loop_mode: 'true', // Forcer loop_mode pour les assignations
+      auto_play: 'true',
+      loop_mode: 'true',
       assigned: 'true'
     });
     
     const url = `/presentation/${assigned.presentation_id}?${params.toString()}`;
-    console.log('Navigating to assigned presentation:', url);
     router.push(url);
   };
 
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.3.1 ===');
-    console.log('Presentation ID:', defaultPres.presentation_id);
+    console.log('=== LAUNCHING DEFAULT PRESENTATION ===');
     
     const params = new URLSearchParams({
-      auto_play: 'true', // Auto-lancer les présentations par défaut
-      loop_mode: 'true', // Mode boucle pour les présentations par défaut
+      auto_play: 'true',
+      loop_mode: 'true',
       assigned: 'false',
       default: 'true'
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('Navigating to default presentation:', url);
     router.push(url);
   };
 
@@ -266,12 +176,6 @@ export default function HomeScreen() {
     setRefreshing(true);
     await checkConnection();
     await loadPresentations();
-    
-    // Forcer une vérification des assignations lors du refresh manuel
-    if (apiService.isDeviceRegistered()) {
-      await periodicMonitoringCheck();
-    }
-    
     setRefreshing(false);
   };
 
@@ -330,7 +234,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.3.1 - Auto-start corrigé • Monitoring 5min • ID: {apiService.getDeviceId()}
+          Version 1.3.0 - Timer corrigé • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -374,7 +278,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🚀 Démarrage automatique activé
+                🚀 Lecture automatique en boucle
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -420,7 +324,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🌟 Démarrage automatique activé
+                🌟 Cliquez pour lancer
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -498,7 +402,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.3.1 - Auto-start et monitoring corrigés</Text>
+          <Text style={styles.loadingSubtext}>Version 1.3.0 - Timer corrigé</Text>
         </LinearGradient>
       </View>
     );
@@ -521,7 +425,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.3.1 Auto-start + Monitoring
+                Fire TV Stick - Version 1.3.0 Timer Corrigé
               </Text>
               
               <TouchableOpacity
@@ -552,7 +456,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Auto-start activé • Monitoring 5min • v1.3.1
+              🔄 Lecture automatique en boucle • Timer corrigé v1.3.0
             </Text>
           </View>
           
