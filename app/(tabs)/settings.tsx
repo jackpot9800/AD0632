@@ -129,7 +129,7 @@ export default function SettingsScreen() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'PresentationKiosk/1.2.0 (FireTV)',
+          'User-Agent': 'PresentationKiosk/1.3.1 (FireTV)',
           'Cache-Control': 'no-cache',
         },
       });
@@ -184,7 +184,7 @@ export default function SettingsScreen() {
     setSaving(true);
     
     try {
-      console.log('=== SAVING SETTINGS ===');
+      console.log('=== SAVING SETTINGS v1.3.1 ===');
       
       const success = await apiService.setServerUrl(serverUrl.trim());
       
@@ -232,7 +232,7 @@ export default function SettingsScreen() {
     setRegistering(true);
     
     try {
-      console.log('=== MANUAL DEVICE REGISTRATION ===');
+      console.log('=== MANUAL DEVICE REGISTRATION v1.3.1 ===');
       
       if (apiService.isDeviceRegistered()) {
         Alert.alert(
@@ -332,7 +332,7 @@ export default function SettingsScreen() {
             <SettingsIcon size={32} color="#ffffff" />
           </LinearGradient>
           <Text style={styles.title}>Paramètres</Text>
-          <Text style={styles.subtitle}>Version 1.2.0 - Application simplifiée</Text>
+          <Text style={styles.subtitle}>Version 1.3.1 - Auto-start + Keep-awake + Monitoring</Text>
         </View>
 
         <View style={styles.section}>
@@ -439,7 +439,7 @@ export default function SettingsScreen() {
             <View style={styles.settingLabelContainer}>
               <Monitor size={20} color={keepAwakeEnabled ? "#10b981" : "#6b7280"} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Keep-awake</Text>
+                <Text style={styles.settingLabel}>Keep-awake (v14.1.4)</Text>
                 <Text style={styles.settingDescription}>
                   Empêcher la mise en veille pendant les présentations
                 </Text>
@@ -477,7 +477,7 @@ export default function SettingsScreen() {
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Rapport de statut</Text>
                 <Text style={styles.settingDescription}>
-                  Envoyer le statut au serveur
+                  Envoyer le statut au serveur (monitoring 5min)
                 </Text>
               </View>
             </View>
@@ -508,7 +508,7 @@ export default function SettingsScreen() {
               <Monitor size={20} color="#9ca3af" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Version</Text>
-                <Text style={styles.infoValue}>1.2.0 - Simplifiée</Text>
+                <Text style={styles.infoValue}>1.3.1 - Auto-start + Keep-awake + Monitoring</Text>
               </View>
             </View>
             
@@ -528,6 +528,26 @@ export default function SettingsScreen() {
                     <Text style={styles.infoLabel}>Statut</Text>
                     <Text style={[styles.infoValue, { color: debugInfo.isRegistered ? "#10b981" : "#ef4444" }]}>
                       {debugInfo.isRegistered ? 'Enregistré' : 'Non enregistré'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.infoRow}>
+                  <Activity size={20} color={debugInfo.assignmentCheckEnabled ? "#10b981" : "#6b7280"} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Monitoring assignations</Text>
+                    <Text style={styles.infoValue}>
+                      {debugInfo.assignmentCheckEnabled ? 'Actif (5min)' : 'Inactif'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.infoRow}>
+                  <Star size={20} color={debugInfo.defaultCheckEnabled ? "#10b981" : "#6b7280"} />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Monitoring par défaut</Text>
+                    <Text style={styles.infoValue}>
+                      {debugInfo.defaultCheckEnabled ? 'Actif (5min)' : 'Inactif'}
                     </Text>
                   </View>
                 </View>
