@@ -15,7 +15,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+
+// Importation conditionnelle de expo-keep-awake
+let activateKeepAwakeAsync: () => Promise<void>;
+let deactivateKeepAwake: () => void;
+
+if (Platform.OS !== 'web') {
+  try {
+    const keepAwake = require('expo-keep-awake');
+    activateKeepAwakeAsync = keepAwake.activateKeepAwakeAsync;
+    deactivateKeepAwake = keepAwake.deactivateKeepAwake;
+  } catch (error) {
+    console.log('Keep awake not available:', error);
+    // Fonctions factices si le module n'est pas disponible
+    activateKeepAwakeAsync = async () => {};
+    deactivateKeepAwake = () => {};
+  }
+} else {
+  // Fonctions factices pour le web
+  activateKeepAwakeAsync = async () => {};
+  deactivateKeepAwake = () => {};
+}
 
 export default function HomeScreen() {
   const [presentations, setPresentations] = useState<Presentation[]>([]);
@@ -36,7 +56,7 @@ export default function HomeScreen() {
     
     // Démarrer le monitoring périodique toutes les 5 minutes
     const monitoringInterval = setInterval(() => {
-      console.log('=== PERIODIC MONITORING CHECK v1.5.0 ===');
+      console.log('=== PERIODIC MONITORING CHECK v1.5.1 ===');
       periodicMonitoringCheck();
     }, 5 * 60 * 1000); // 5 minutes
     
@@ -55,7 +75,7 @@ export default function HomeScreen() {
     await statusService.initialize();
     
     const serverUrl = apiService.getServerUrl();
-    console.log('Current server URL v1.5.0:', serverUrl);
+    console.log('Current server URL v1.5.1:', serverUrl);
     
     if (!serverUrl) {
       setConnectionStatus('not_configured');
@@ -67,7 +87,7 @@ export default function HomeScreen() {
     await loadPresentations();
     
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.5.0 ===');
+      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.5.1 ===');
       await startAssignmentMonitoring();
       await startDefaultPresentationMonitoring();
     }
@@ -86,16 +106,16 @@ export default function HomeScreen() {
     setLastMonitoringCheck(now);
     
     try {
-      console.log('=== PERIODIC CHECK v1.5.0: Refreshing presentations ===');
+      console.log('=== PERIODIC CHECK v1.5.1: Refreshing presentations ===');
       await loadPresentations();
       
       if (apiService.isDeviceRegistered()) {
-        console.log('=== PERIODIC CHECK v1.5.0: Checking assignments ===');
+        console.log('=== PERIODIC CHECK v1.5.1: Checking assignments ===');
         
         // Vérifier les nouvelles assignations
         const newAssigned = await apiService.checkForAssignedPresentation();
         if (newAssigned && (!assignedPresentation || newAssigned.id !== assignedPresentation.id)) {
-          console.log('=== NEW ASSIGNED PRESENTATION DETECTED v1.5.0 ===');
+          console.log('=== NEW ASSIGNED PRESENTATION DETECTED v1.5.1 ===');
           setAssignedPresentation(newAssigned);
           
           // Auto-lancer immédiatement si nouvelle assignation
@@ -107,7 +127,7 @@ export default function HomeScreen() {
         // Vérifier les présentations par défaut
         const newDefault = await apiService.checkForDefaultPresentation();
         if (newDefault && (!defaultPresentation || newDefault.presentation_id !== defaultPresentation.presentation_id)) {
-          console.log('=== NEW DEFAULT PRESENTATION DETECTED v1.5.0 ===');
+          console.log('=== NEW DEFAULT PRESENTATION DETECTED v1.5.1 ===');
           setDefaultPresentation(newDefault);
           
           // Auto-lancer seulement s'il n'y a pas d'assignation active
@@ -165,10 +185,10 @@ export default function HomeScreen() {
 
   const startAssignmentMonitoring = async () => {
     try {
-      console.log('=== STARTING ASSIGNMENT MONITORING v1.5.0 ===');
+      console.log('=== STARTING ASSIGNMENT MONITORING v1.5.1 ===');
       
       await apiService.startAssignmentCheck((assigned: AssignedPresentation) => {
-        console.log('=== ASSIGNED PRESENTATION DETECTED VIA CALLBACK v1.5.0 ===');
+        console.log('=== ASSIGNED PRESENTATION DETECTED VIA CALLBACK v1.5.1 ===');
         setAssignedPresentation(assigned);
         
         // Auto-lancer immédiatement
@@ -180,7 +200,7 @@ export default function HomeScreen() {
       // Vérifier immédiatement s'il y a une assignation existante
       const existing = await apiService.checkForAssignedPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION v1.5.0 ===');
+        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION v1.5.1 ===');
         setAssignedPresentation(existing);
         
         // Auto-lancer après un délai
@@ -195,10 +215,10 @@ export default function HomeScreen() {
 
   const startDefaultPresentationMonitoring = async () => {
     try {
-      console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.5.0 ===');
+      console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.5.1 ===');
       
       await apiService.startDefaultPresentationCheck((defaultPres: DefaultPresentation) => {
-        console.log('=== DEFAULT PRESENTATION DETECTED VIA CALLBACK v1.5.0 ===');
+        console.log('=== DEFAULT PRESENTATION DETECTED VIA CALLBACK v1.5.1 ===');
         setDefaultPresentation(defaultPres);
         
         // Auto-lancer seulement s'il n'y a pas d'assignation
@@ -212,7 +232,7 @@ export default function HomeScreen() {
       // Vérifier immédiatement s'il y a une présentation par défaut
       const existing = await apiService.checkForDefaultPresentation();
       if (existing) {
-        console.log('=== FOUND EXISTING DEFAULT PRESENTATION v1.5.0 ===');
+        console.log('=== FOUND EXISTING DEFAULT PRESENTATION v1.5.1 ===');
         setDefaultPresentation(existing);
         
         // Auto-lancer seulement s'il n'y a pas d'assignation et après un délai plus long
@@ -228,7 +248,7 @@ export default function HomeScreen() {
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.5.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.5.1 ===');
     console.log('Presentation ID:', assigned.presentation_id);
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
@@ -245,7 +265,7 @@ export default function HomeScreen() {
   };
 
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.5.0 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.5.1 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     
     const params = new URLSearchParams({
@@ -305,7 +325,7 @@ export default function HomeScreen() {
     const statusConfig = {
       connected: { color: '#10b981', text: 'Connecté au serveur', icon: Wifi },
       disconnected: { color: '#ef4444', text: 'Serveur inaccessible', icon: WifiOff },
-      testing: { color: '#f59e0b', text: 'Test de connexion...', icon: RefreshCw },
+      testing: { color: '#f59e0b', text: 'Test en cours...', icon: RefreshCw },
       not_configured: { color: '#6b7280', text: 'Serveur non configuré', icon: WifiOff },
     };
 
@@ -328,7 +348,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.5.0 - Simplifiée • ID: {apiService.getDeviceId()}
+          Version 1.5.1 - Simplifiée • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -375,7 +395,7 @@ export default function HomeScreen() {
                 🚀 Démarrage automatique activé
               </Text>
               <View style={styles.assignedPlayButton}>
-                <Play size={18} color="#ffffff" fill="#ffffff" />
+                <Play size={18} color="#ffffff" />
               </View>
             </View>
           </LinearGradient>
@@ -421,7 +441,7 @@ export default function HomeScreen() {
                 🌟 Démarrage automatique activé
               </Text>
               <View style={styles.assignedPlayButton}>
-                <Play size={18} color="#ffffff" fill="#ffffff" />
+                <Play size={18} color="#ffffff" />
               </View>
             </View>
           </LinearGradient>
@@ -479,7 +499,7 @@ export default function HomeScreen() {
               {new Date(presentation.created_at).toLocaleDateString('fr-FR')}
             </Text>
             <View style={styles.playButton}>
-              <Play size={18} color="#ffffff" fill="#ffffff" />
+              <Play size={18} color="#ffffff" />
             </View>
           </View>
         </LinearGradient>
@@ -492,7 +512,7 @@ export default function HomeScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
         <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-        <Text style={styles.loadingSubtext}>Version 1.5.0 - Simplifiée</Text>
+        <Text style={styles.loadingSubtext}>Version 1.5.1 - Simplifiée</Text>
       </View>
     );
   }
@@ -514,7 +534,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.5.0 Simplifiée
+                Fire TV Stick - Version 1.5.1 Simplifiée
               </Text>
               
               <TouchableOpacity
@@ -545,7 +565,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Auto-start activé • Monitoring 5min • v1.5.0
+              🔄 Auto-start activé • Monitoring 5min • v1.5.1
             </Text>
           </View>
           
