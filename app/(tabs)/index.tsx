@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,10 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity } from 'lucide-react-native';
+import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 
@@ -25,8 +24,6 @@ export default function HomeScreen() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing' | 'not_configured'>('testing');
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
-  const [focusedIndex, setFocusedIndex] = useState(0);
-  const [deviceStatus, setDeviceStatus] = useState<'online' | 'offline' | 'playing' | 'paused' | 'error'>('offline');
 
   useEffect(() => {
     initializeApp();
@@ -50,7 +47,7 @@ export default function HomeScreen() {
     await loadPresentations();
     
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== DEVICE IS REGISTERED AND CONNECTED, STARTING CHECKS ===');
+      console.log('=== DEVICE IS REGISTERED AND CONNECTED ===');
       startAssignmentMonitoring();
       startDefaultPresentationMonitoring();
     }
@@ -61,13 +58,7 @@ export default function HomeScreen() {
   const initializeStatusService = async () => {
     try {
       await statusService.initialize();
-      
-      statusService.setOnStatusUpdate((status) => {
-        setDeviceStatus(status.status);
-      });
-
       statusService.updateStatus({ status: 'online' });
-      
     } catch (error) {
       console.error('Failed to initialize status service:', error);
     }
@@ -104,7 +95,7 @@ export default function HomeScreen() {
       console.error('Error loading presentations:', error);
       Alert.alert(
         'Erreur de connexion',
-        `Impossible de charger les présentations:\n\n${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        `Impossible de charger les présentations`,
         [
           { text: 'Paramètres', onPress: () => router.push('/(tabs)/settings') },
           { text: 'Réessayer', onPress: loadPresentations },
@@ -119,7 +110,6 @@ export default function HomeScreen() {
         console.log('=== ASSIGNED PRESENTATION DETECTED ===');
         setAssignedPresentation(assigned);
         
-        // Lancement automatique IMMÉDIAT
         setTimeout(() => {
           launchAssignedPresentation(assigned);
         }, 1000);
@@ -243,34 +233,10 @@ export default function HomeScreen() {
         <Text style={styles.serverUrl}>
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderDeviceStatus = () => {
-    const statusConfig = {
-      online: { color: '#10b981', text: 'En ligne', icon: Activity },
-      offline: { color: '#6b7280', text: 'Hors ligne', icon: WifiOff },
-      playing: { color: '#3b82f6', text: 'En diffusion', icon: Play },
-      paused: { color: '#f59e0b', text: 'En pause', icon: Play },
-      error: { color: '#ef4444', text: 'Erreur', icon: WifiOff },
-    };
-
-    const config = statusConfig[deviceStatus];
-    const IconComponent = config.icon;
-
-    return (
-      <View style={[styles.deviceStatusCard, { borderLeftColor: config.color }]}>
-        <View style={styles.statusHeader}>
-          <IconComponent size={20} color={config.color} />
-          <Text style={[styles.statusText, { color: config.color }]}>
-            Statut: {config.text}
-          </Text>
-        </View>
-        <Text style={styles.deviceId}>
-          ID: {apiService.getDeviceId()} • Version: 1.2.0
+        <Text style={styles.versionText}>
+          Version 1.3.0 - Timer corrigé • ID: {apiService.getDeviceId()}
         </Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -436,7 +402,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.2.0 - Simplifiée</Text>
+          <Text style={styles.loadingSubtext}>Version 1.3.0 - Timer corrigé</Text>
         </LinearGradient>
       </View>
     );
@@ -459,7 +425,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.2.0 Simplifiée
+                Fire TV Stick - Version 1.3.0 Timer Corrigé
               </Text>
               
               <TouchableOpacity
@@ -481,7 +447,6 @@ export default function HomeScreen() {
         </LinearGradient>
 
         {renderConnectionStatus()}
-        {renderDeviceStatus()}
         {renderAssignedPresentation()}
         {renderDefaultPresentation()}
 
@@ -491,7 +456,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Lecture automatique en boucle • Version simplifiée
+              🔄 Lecture automatique en boucle • Timer corrigé v1.3.0
             </Text>
           </View>
           
@@ -650,19 +615,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  deviceStatusCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 20,
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
   statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -680,7 +632,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     marginBottom: 4,
   },
-  deviceId: {
+  versionText: {
     fontSize: 12,
     color: '#9ca3af',
     fontFamily: 'monospace',
