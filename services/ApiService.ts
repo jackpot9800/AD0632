@@ -87,14 +87,13 @@ class ApiService {
   private onDefaultPresentationCallback: ((presentation: DefaultPresentation) => void) | null = null;
   private assignmentCheckEnabled: boolean = false;
   private defaultCheckEnabled: boolean = false;
-  private apiType: 'standard' | 'affichageDynamique' = 'affichageDynamique'; // Par défaut affichageDynamique
+  private apiType: 'standard' | 'affichageDynamique' = 'affichageDynamique';
   private lastConnectionError: string = '';
   private connectionAttempts: number = 0;
-  private directFetchMode: boolean = false; // Mode fetch direct pour contourner les problèmes
 
   async initialize() {
     try {
-      console.log('=== INITIALIZING API SERVICE ===');
+      console.log('=== INITIALIZING API SERVICE v1.3.9 ===');
       
       const savedUrl = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
       const savedDeviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
@@ -125,11 +124,7 @@ class ApiService {
         console.log('Loaded enrollment token');
       }
 
-      console.log('=== API SERVICE INITIALIZED ===');
-      console.log('Server URL:', this.baseUrl);
-      console.log('Device ID:', this.deviceId);
-      console.log('Is Registered:', this.isRegistered);
-      console.log('API Type:', this.apiType);
+      console.log('=== API SERVICE INITIALIZED v1.3.9 ===');
       
     } catch (error) {
       console.error('Error initializing API service:', error);
@@ -149,7 +144,6 @@ class ApiService {
     try {
       console.log('=== DETECTING API TYPE ===');
       
-      // Tester d'abord l'API affichageDynamique
       const response = await this.makeRequest<any>('/version');
       
       if (response.database === 'affichageDynamique') {
@@ -170,7 +164,6 @@ class ApiService {
    */
   private getEndpoint(endpoint: string): string {
     if (this.apiType === 'affichageDynamique') {
-      // Mapping des endpoints pour l'API affichageDynamique
       const endpointMapping: { [key: string]: string } = {
         '/device/register': '/appareil/enregistrer',
         '/device/assigned-presentation': '/appareil/presentation-assignee',
@@ -181,15 +174,14 @@ class ApiService {
         '/version': '/version'
       };
 
-      // Gérer les endpoints dynamiques comme /presentation/{id}
       if (endpoint.startsWith('/presentation/') && endpoint.match(/\/presentation\/\d+$/)) {
-        return endpoint; // Garder tel quel pour l'API affichageDynamique
+        return endpoint;
       }
 
       return endpointMapping[endpoint] || endpoint;
     }
     
-    return endpoint; // API standard
+    return endpoint;
   }
 
   /**
@@ -201,19 +193,15 @@ class ApiService {
       return;
     }
 
-    // Détecter le type d'API d'abord
     await this.detectApiType();
 
-    console.log('=== STARTING ASSIGNMENT CHECK ===');
+    console.log('=== STARTING ASSIGNMENT CHECK v1.3.9 ===');
     console.log('API Type:', this.apiType);
-    console.log('Base URL:', this.baseUrl);
 
-    // CORRECTION: Activer directement la surveillance pour affichageDynamique
     if (this.apiType === 'affichageDynamique') {
       console.log('✅ Enabling assignment check for affichageDynamique API');
       this.assignmentCheckEnabled = true;
     } else {
-      // Pour l'API standard, vérifier si l'endpoint existe
       console.log('=== CHECKING IF ASSIGNMENT ENDPOINT EXISTS (Standard API) ===');
       try {
         const testResponse = await this.makeRequest<any>('/version');
@@ -236,17 +224,15 @@ class ApiService {
 
     this.onAssignedPresentationCallback = callback || null;
 
-    // Vérifier immédiatement
     this.checkForAssignedPresentation();
 
-    // Puis vérifier toutes les 15 secondes pour les assignations (plus fréquent)
     this.assignmentCheckInterval = setInterval(async () => {
       try {
         await this.checkForAssignedPresentation();
       } catch (error) {
         console.log('Assignment check failed:', error);
       }
-    }, 15000); // 15 secondes pour une réactivité maximale
+    }, 15000);
 
     console.log('✅ Assignment check started with 15s interval');
   }
@@ -260,19 +246,15 @@ class ApiService {
       return;
     }
 
-    // Détecter le type d'API d'abord
     await this.detectApiType();
 
-    console.log('=== STARTING DEFAULT PRESENTATION CHECK ===');
+    console.log('=== STARTING DEFAULT PRESENTATION CHECK v1.3.9 ===');
     console.log('API Type:', this.apiType);
-    console.log('Base URL:', this.baseUrl);
 
-    // CORRECTION: Activer directement la surveillance pour affichageDynamique
     if (this.apiType === 'affichageDynamique') {
       console.log('✅ Enabling default presentation check for affichageDynamique API');
       this.defaultCheckEnabled = true;
     } else {
-      // Pour l'API standard, vérifier si l'endpoint existe
       console.log('=== CHECKING IF DEFAULT PRESENTATION ENDPOINT EXISTS (Standard API) ===');
       try {
         const testResponse = await this.makeRequest<any>('/version');
@@ -295,10 +277,8 @@ class ApiService {
 
     this.onDefaultPresentationCallback = callback || null;
 
-    // Vérifier immédiatement
     this.checkForDefaultPresentation();
 
-    // Puis vérifier toutes les 30 secondes pour les présentations par défaut
     this.defaultCheckInterval = setInterval(async () => {
       try {
         await this.checkForDefaultPresentation();
@@ -344,10 +324,9 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR ASSIGNED PRESENTATION ===');
+      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v1.3.9 ===');
       const endpoint = this.getEndpoint('/device/assigned-presentation');
       console.log('Using endpoint:', endpoint);
-      console.log('API Type:', this.apiType);
       
       const response = await this.makeRequest<ApiResponse<AssignedPresentation>>(endpoint);
       const assignedPresentation = response.assigned_presentation;
@@ -359,10 +338,8 @@ class ApiService {
           loop_mode: assignedPresentation.loop_mode
         });
         
-        // Sauvegarder localement
         await AsyncStorage.setItem(STORAGE_KEYS.ASSIGNED_PRESENTATION, JSON.stringify(assignedPresentation));
         
-        // Déclencher le callback si défini
         if (this.onAssignedPresentationCallback) {
           this.onAssignedPresentationCallback(assignedPresentation);
         }
@@ -370,12 +347,10 @@ class ApiService {
         return assignedPresentation;
       } else {
         console.log('No assigned presentation found');
-        // Supprimer l'assignation locale si elle n'existe plus
         await AsyncStorage.removeItem(STORAGE_KEYS.ASSIGNED_PRESENTATION);
         return null;
       }
     } catch (error) {
-      // Gérer spécifiquement l'erreur d'endpoint non trouvé
       if (error instanceof Error) {
         if (error.message.includes('Endpoint not found') || error.message.includes('404')) {
           console.log('⚠️ Assignment endpoint not available on this server version - disabling assignment check');
@@ -391,7 +366,8 @@ class ApiService {
   }
 
   /**
-   * Vérifie s'il y a une présentation par défaut pour cet appareil
+   * CORRECTION CRITIQUE v1.3.9: Vérifie s'il y a une présentation par défaut pour cet appareil
+   * AVEC VALIDATION STRICTE de presentation_defaut_id > 0
    */
   async checkForDefaultPresentation(): Promise<DefaultPresentation | null> {
     try {
@@ -400,44 +376,50 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR DEFAULT PRESENTATION ===');
+      console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.3.9 ===');
       const endpoint = this.getEndpoint('/device/default-presentation');
       console.log('Using endpoint:', endpoint);
       console.log('Device ID:', this.deviceId);
-      console.log('API Type:', this.apiType);
       
       const response = await this.makeRequest<ApiResponse<DefaultPresentation>>(endpoint);
       
-      console.log('=== DEFAULT PRESENTATION RESPONSE ===');
+      console.log('=== DEFAULT PRESENTATION RESPONSE v1.3.9 ===');
       console.log('Full response:', response);
       
       const defaultPresentation = response.default_presentation;
 
-      if (defaultPresentation && defaultPresentation.presentation_id) {
-        console.log('✅ Found default presentation:', {
+      // CORRECTION CRITIQUE v1.3.9: VALIDATION STRICTE
+      if (defaultPresentation && 
+          defaultPresentation.presentation_id && 
+          defaultPresentation.presentation_id > 0 && // VALIDATION CRITIQUE: ID > 0
+          defaultPresentation.presentation_name) {
+        
+        console.log('✅ Found VALID default presentation v1.3.9:', {
           presentation_id: defaultPresentation.presentation_id,
           presentation_name: defaultPresentation.presentation_name,
           is_default: defaultPresentation.is_default
         });
         
-        // Sauvegarder localement
         await AsyncStorage.setItem(STORAGE_KEYS.DEFAULT_PRESENTATION, JSON.stringify(defaultPresentation));
         
-        // Déclencher le callback si défini
         if (this.onDefaultPresentationCallback) {
           this.onDefaultPresentationCallback(defaultPresentation);
         }
         
         return defaultPresentation;
       } else {
-        console.log('❌ No default presentation found or invalid data');
+        console.log('❌ No valid default presentation found v1.3.9');
         console.log('Response data:', defaultPresentation);
-        // Supprimer la présentation par défaut locale si elle n'existe plus
+        console.log('Validation failed:');
+        console.log('- presentation_id exists:', !!defaultPresentation?.presentation_id);
+        console.log('- presentation_id > 0:', (defaultPresentation?.presentation_id || 0) > 0);
+        console.log('- presentation_name exists:', !!defaultPresentation?.presentation_name);
+        
+        // Supprimer la présentation par défaut locale si elle n'est plus valide
         await AsyncStorage.removeItem(STORAGE_KEYS.DEFAULT_PRESENTATION);
         return null;
       }
     } catch (error) {
-      // Gérer spécifiquement l'erreur d'endpoint non trouvé
       if (error instanceof Error) {
         if (error.message.includes('Endpoint not found') || error.message.includes('404')) {
           console.log('⚠️ Default presentation endpoint not available on this server version - disabling default presentation check');
@@ -488,7 +470,7 @@ class ApiService {
         return false;
       }
       
-      const endpoint = `/appareil/presentation/${presentationId}/vue`; // Endpoint affichageDynamique
+      const endpoint = `/appareil/presentation/${presentationId}/vue`;
       const response = await this.makeRequest<{ success: boolean }>(endpoint, {
         method: 'POST',
       });
@@ -499,47 +481,13 @@ class ApiService {
     }
   }
 
-  /**
-   * Debug de l'appareil via l'API
-   */
-  async debugDevice(): Promise<any> {
-    try {
-      if (!this.baseUrl || !this.deviceId) {
-        return {
-          error: 'Device not configured',
-          deviceId: this.deviceId,
-          baseUrl: this.baseUrl
-        };
-      }
-
-      console.log('=== DEBUGGING DEVICE VIA API ===');
-      const response = await this.makeRequest<any>(`/debug/appareil/${this.deviceId}`);
-      return response;
-    } catch (error) {
-      console.log('Debug endpoint not available:', error);
-      return {
-        error: 'Debug endpoint not available',
-        deviceId: this.deviceId,
-        baseUrl: this.baseUrl,
-        isRegistered: this.isRegistered,
-        assignmentCheckEnabled: this.assignmentCheckEnabled,
-        defaultCheckEnabled: this.defaultCheckEnabled,
-        apiType: this.apiType,
-        lastConnectionError: this.lastConnectionError,
-        connectionAttempts: this.connectionAttempts
-      };
-    }
-  }
-
   async setServerUrl(url: string): Promise<boolean> {
     try {
-      console.log('=== SETTING SERVER URL ===');
+      console.log('=== SETTING SERVER URL v1.3.9 ===');
       console.log('Input URL:', url);
       
-      // Nettoyer l'URL et s'assurer qu'elle se termine par index.php
       let cleanUrl = url.replace(/\/+$/, '');
       
-      // Si l'URL ne se termine pas par index.php, l'ajouter
       if (!cleanUrl.endsWith('index.php')) {
         if (!cleanUrl.endsWith('/')) {
           cleanUrl += '/';
@@ -552,12 +500,11 @@ class ApiService {
       this.baseUrl = cleanUrl;
       await AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, cleanUrl);
       
-      // Réinitialiser le statut d'enregistrement pour le nouveau serveur
       this.isRegistered = false;
       this.enrollmentToken = '';
       this.assignmentCheckEnabled = false;
       this.defaultCheckEnabled = false;
-      this.apiType = 'affichageDynamique'; // Par défaut affichageDynamique
+      this.apiType = 'affichageDynamique';
       this.lastConnectionError = '';
       this.connectionAttempts = 0;
       
@@ -566,24 +513,20 @@ class ApiService {
       await AsyncStorage.removeItem(STORAGE_KEYS.ASSIGNED_PRESENTATION);
       await AsyncStorage.removeItem(STORAGE_KEYS.DEFAULT_PRESENTATION);
       
-      // Arrêter les anciens checks
       this.stopAssignmentCheck();
       this.stopDefaultPresentationCheck();
       
-      // Détecter le type d'API
       await this.detectApiType();
       
-      // Tester la connexion
       const connectionOk = await this.testConnection();
       if (connectionOk) {
-        // Enregistrer l'appareil
         const registrationOk = await this.registerDevice();
         if (registrationOk) {
-          console.log('=== SERVER SETUP COMPLETE ===');
+          console.log('=== SERVER SETUP COMPLETE v1.3.9 ===');
           return true;
         } else {
           console.warn('Connection OK but registration failed');
-          return true; // On continue même si l'enregistrement échoue
+          return true;
         }
       }
       
@@ -611,23 +554,17 @@ class ApiService {
     return this.lastConnectionError;
   }
 
-  /**
-   * Obtient l'URL de base du serveur pour les images
-   */
   private getBaseServerUrl(): string {
     if (!this.baseUrl) return '';
     
     console.log('=== BUILDING BASE SERVER URL ===');
     console.log('Original baseUrl:', this.baseUrl);
     
-    // Supprimer /api/index.php ou /index.php de l'URL pour obtenir l'URL de base
     let baseServerUrl = this.baseUrl;
     
-    // Si l'URL contient /api/index.php, supprimer cette partie
     if (baseServerUrl.includes('/api/index.php')) {
       baseServerUrl = baseServerUrl.replace('/api/index.php', '');
     }
-    // Sinon si elle contient juste /index.php, supprimer cette partie
     else if (baseServerUrl.includes('/index.php')) {
       baseServerUrl = baseServerUrl.replace('/index.php', '');
     }
@@ -636,9 +573,6 @@ class ApiService {
     return baseServerUrl;
   }
 
-  /**
-   * Nettoie une réponse PHP de manière robuste
-   */
   private cleanPhpResponse(responseText: string): string {
     console.log('=== CLEANING PHP RESPONSE ===');
     console.log('Original length:', responseText.length);
@@ -646,12 +580,10 @@ class ApiService {
     
     let cleanedResponse = responseText.trim();
     
-    // 1. Chercher d'abord un JSON valide dans la réponse
     const jsonMatches = cleanedResponse.match(/\{[\s\S]*\}/);
     if (jsonMatches && jsonMatches.length > 0) {
       const potentialJson = jsonMatches[0];
       try {
-        // Tester si c'est du JSON valide
         JSON.parse(potentialJson);
         console.log('Found valid JSON in response');
         return potentialJson;
@@ -660,7 +592,6 @@ class ApiService {
       }
     }
     
-    // 2. Si pas de JSON trouvé, nettoyer les erreurs PHP
     const phpErrorPatterns = [
       /<br\s*\/?>\s*<b>Warning<\/b>:.*?<br\s*\/?>/gi,
       /<br\s*\/?>\s*<b>Notice<\/b>:.*?<br\s*\/?>/gi,
@@ -676,7 +607,6 @@ class ApiService {
     
     let foundErrors = [];
     
-    // Supprimer chaque type d'erreur PHP
     phpErrorPatterns.forEach((pattern, index) => {
       const matches = cleanedResponse.match(pattern);
       if (matches) {
@@ -685,7 +615,6 @@ class ApiService {
       }
     });
     
-    // Supprimer les <br> orphelins et espaces
     cleanedResponse = cleanedResponse
       .replace(/^(\s*<br\s*\/?>)+/gi, '')
       .replace(/(\s*<br\s*\/?>)+$/gi, '')
@@ -699,25 +628,18 @@ class ApiService {
     return cleanedResponse;
   }
 
-  /**
-   * Extraction JSON avec gestion d'erreurs améliorée
-   */
   private extractJsonFromResponse(responseText: string): any {
     console.log('=== EXTRACTING JSON FROM RESPONSE ===');
     
-    // Nettoyer d'abord les erreurs PHP
     let cleanedResponse = this.cleanPhpResponse(responseText);
     
-    // Si la réponse est vide après nettoyage
     if (!cleanedResponse.trim()) {
       throw new Error('Réponse vide après suppression des erreurs PHP');
     }
     
-    // Vérifier si c'est une page d'erreur HTML complète
     if (cleanedResponse.includes('<!DOCTYPE') || cleanedResponse.includes('<html')) {
       console.error('Response is a full HTML page:', cleanedResponse.substring(0, 200));
       
-      // Essayer d'extraire des informations utiles de la page d'erreur
       if (cleanedResponse.includes('404') || cleanedResponse.includes('Not Found')) {
         throw new Error('Endpoint non trouvé (404). Vérifiez que votre API est correctement configurée.');
       } else if (cleanedResponse.includes('500') || cleanedResponse.includes('Internal Server Error')) {
@@ -729,7 +651,6 @@ class ApiService {
       }
     }
     
-    // Vérifier si ça commence encore par du HTML après nettoyage
     if (cleanedResponse.trim().startsWith('<')) {
       console.error('Still HTML after cleaning:', cleanedResponse.substring(0, 300));
       throw new Error('La réponse contient encore du HTML après nettoyage.');
@@ -758,9 +679,6 @@ class ApiService {
     }
   }
 
-  /**
-   * Crée un timeout manuel
-   */
   private createTimeoutPromise(timeoutMs: number): Promise<never> {
     return new Promise((_, reject) => {
       setTimeout(() => {
@@ -769,15 +687,9 @@ class ApiService {
     });
   }
 
-  /**
-   * Effectue une requête avec timeout manuel et configuration réseau améliorée pour APK
-   */
   private async fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> {
-    // Configuration spéciale pour APK compilée
     const enhancedOptions: RequestInit = {
       ...options,
-      // Forcer l'utilisation de HTTP/1.1 pour éviter les problèmes de certificats
-      // et améliorer la compatibilité avec les serveurs PHP
       headers: {
         ...options.headers,
         'Connection': 'keep-alive',
@@ -798,12 +710,11 @@ class ApiService {
       throw new Error('URL du serveur non configurée');
     }
 
-    // Construire l'URL correctement avec le bon endpoint
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const finalEndpoint = this.getEndpoint(cleanEndpoint);
     const url = `${this.baseUrl}${finalEndpoint}`;
     
-    console.log('=== API REQUEST ===');
+    console.log('=== API REQUEST v1.3.9 ===');
     console.log('Original endpoint:', cleanEndpoint);
     console.log('Final endpoint:', finalEndpoint);
     console.log('URL:', url);
@@ -811,17 +722,16 @@ class ApiService {
     console.log('Device ID:', this.deviceId);
     console.log('API Type:', this.apiType);
     
-    // Headers améliorés pour APK compilée
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
-      'User-Agent': 'PresentationKiosk/2.0 (Android; FireTV)',
+      'User-Agent': 'PresentationKiosk/1.3.9 (Android; FireTV)',
       'X-Device-ID': this.deviceId,
       'X-Device-Type': 'firetv',
-      'X-App-Version': '2.0.0',
+      'X-App-Version': '1.3.9',
       'X-Platform': 'android',
       'Connection': 'keep-alive',
       ...options.headers,
@@ -857,7 +767,6 @@ class ApiService {
         console.error('Status:', response.status);
         console.error('Response:', responseText);
         
-        // Stocker l'erreur pour le diagnostic
         this.lastConnectionError = `HTTP ${response.status}: ${responseText.substring(0, 200)}`;
         
         if (response.status === 500) {
@@ -883,14 +792,12 @@ class ApiService {
         throw new Error('Réponse vide du serveur');
       }
 
-      // Réinitialiser le compteur d'erreurs en cas de succès
       this.connectionAttempts = 0;
       this.lastConnectionError = '';
       
       return this.extractJsonFromResponse(responseText);
 
     } catch (error) {
-      // Stocker l'erreur pour le diagnostic
       if (error instanceof Error) {
         this.lastConnectionError = error.message;
         
@@ -908,7 +815,7 @@ class ApiService {
 
   async testConnection(): Promise<boolean> {
     try {
-      console.log('=== TESTING CONNECTION ===');
+      console.log('=== TESTING CONNECTION v1.3.9 ===');
       console.log('Testing URL:', this.baseUrl);
       
       if (!this.baseUrl) {
@@ -916,7 +823,6 @@ class ApiService {
         return false;
       }
       
-      // Essayer d'abord avec /version
       try {
         const response = await this.makeRequest<any>('/version');
         console.log('Connection test response:', response);
@@ -928,7 +834,6 @@ class ApiService {
         
         console.log('Connection test result:', isConnected);
         
-        // Détecter le type d'API lors du test de connexion
         if (isConnected) {
           await this.detectApiType();
           return true;
@@ -937,7 +842,6 @@ class ApiService {
         console.log('First connection test failed, trying root endpoint...');
       }
       
-      // Si /version échoue, essayer avec l'endpoint racine
       try {
         const response = await this.makeRequest<any>('');
         console.log('Root endpoint test response:', response);
@@ -968,7 +872,7 @@ class ApiService {
 
   async registerDevice(): Promise<boolean> {
     try {
-      console.log('=== REGISTERING DEVICE ===');
+      console.log('=== REGISTERING DEVICE v1.3.9 ===');
       console.log('Device ID:', this.deviceId);
       console.log('Server URL:', this.baseUrl);
       console.log('API Type:', this.apiType);
@@ -978,7 +882,7 @@ class ApiService {
         name: `Fire TV Stick - ${this.deviceId.split('_').pop()}`,
         type: 'firetv',
         platform: 'android',
-        user_agent: 'PresentationKiosk/2.0 (Android; FireTV)',
+        user_agent: 'PresentationKiosk/1.3.9 (Android; FireTV)',
         capabilities: [
           'video_playback',
           'image_display',
@@ -1013,7 +917,7 @@ class ApiService {
           await AsyncStorage.setItem(STORAGE_KEYS.ENROLLMENT_TOKEN, response.token);
         }
 
-        console.log('=== DEVICE REGISTERED SUCCESSFULLY ===');
+        console.log('=== DEVICE REGISTERED SUCCESSFULLY v1.3.9 ===');
         console.log('Device ID:', this.deviceId);
         console.log('Token:', response.token);
         return true;
@@ -1032,14 +936,13 @@ class ApiService {
         return true;
       }
       
-      // Relancer l'erreur pour que l'interface utilisateur puisse l'afficher
       throw error;
     }
   }
 
   async getPresentations(): Promise<Presentation[]> {
     try {
-      console.log('=== FETCHING PRESENTATIONS ===');
+      console.log('=== FETCHING PRESENTATIONS v1.3.9 ===');
       
       if (!this.isRegistered) {
         console.log('Device not registered, attempting registration...');
@@ -1052,7 +955,6 @@ class ApiService {
       const response = await this.makeRequest<ApiResponse<Presentation[]>>('/presentations');
       const presentations = response.presentations || [];
       
-      // Valider et nettoyer les données avec support pour les deux APIs
       const cleanedPresentations = presentations.map(pres => ({
         ...pres,
         name: pres.name || pres.nom || 'Présentation sans nom',
@@ -1072,7 +974,7 @@ class ApiService {
 
   async getPresentation(id: number): Promise<PresentationDetails> {
     try {
-      console.log('=== FETCHING PRESENTATION DETAILS ===');
+      console.log('=== FETCHING PRESENTATION DETAILS v1.3.9 ===');
       console.log('Presentation ID:', id);
       
       if (!this.isRegistered) {
@@ -1091,13 +993,11 @@ class ApiService {
 
       const presentation = response.presentation;
       
-      // Valider les slides
       if (!presentation.slides || !Array.isArray(presentation.slides)) {
         console.warn('No slides found, presentation data:', presentation);
         throw new Error('Aucune slide trouvée pour cette présentation');
       }
 
-      // Valider et nettoyer les slides avec les vraies durées
       const validSlides = presentation.slides.filter(slide => {
         if (!slide.image_url && !slide.image_path && !slide.media_path) {
           console.warn('Slide sans image:', slide);
@@ -1105,7 +1005,6 @@ class ApiService {
         }
         return true;
       }).map(slide => {
-        // Construire correctement l'URL de l'image
         let imageUrl = slide.image_url;
         
         if (!imageUrl) {
@@ -1128,10 +1027,9 @@ class ApiService {
           }
         }
         
-        // Utiliser la vraie durée de la base de données
         const duration = parseInt(slide.duration?.toString() || '5');
         
-        console.log('=== SLIDE DURATION DEBUG ===');
+        console.log('=== SLIDE DURATION DEBUG v1.3.9 ===');
         console.log('Slide ID:', slide.id);
         console.log('Raw duration from DB:', slide.duration);
         console.log('Parsed duration:', duration);
@@ -1149,7 +1047,7 @@ class ApiService {
         throw new Error('Aucune slide valide trouvée pour cette présentation');
       }
 
-      console.log('=== VALID SLIDES WITH DURATIONS ===');
+      console.log('=== VALID SLIDES WITH DURATIONS v1.3.9 ===');
       console.log('Count:', validSlides.length);
       validSlides.forEach((slide, index) => {
         console.log(`Slide ${index + 1}:`, {
@@ -1160,7 +1058,6 @@ class ApiService {
         });
       });
 
-      // Support pour les deux APIs
       const finalPresentation = {
         ...presentation,
         name: presentation.name || presentation.nom || 'Présentation sans nom',
@@ -1222,7 +1119,7 @@ class ApiService {
   }
 
   async resetDevice(): Promise<void> {
-    console.log('=== RESETTING DEVICE ===');
+    console.log('=== RESETTING DEVICE v1.3.9 ===');
     
     this.stopAssignmentCheck();
     this.stopDefaultPresentationCheck();
