@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Play, Pause, Monitor, Clock, AlertCircle, RefreshCw, Repeat } from 'lucide-react-native';
+import { ArrowLeft, Play, Pause, Monitor, Clock, CircleAlert as AlertCircle, RefreshCw, Repeat } from 'lucide-react-native';
 import { apiService, PresentationDetails } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
