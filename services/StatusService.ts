@@ -43,11 +43,11 @@ class StatusService {
   async initialize() {
     // Éviter les initialisations multiples
     if (this.isInitialized) {
-      console.log('=== STATUS SERVICE ALREADY INITIALIZED v1.3.3 ===');
+      console.log('=== STATUS SERVICE ALREADY INITIALIZED v1.3.4 ===');
       return;
     }
     
-    console.log('=== INITIALIZING STATUS SERVICE v1.3.3 ===');
+    console.log('=== INITIALIZING STATUS SERVICE v1.3.4 ===');
     
     // Démarrer le heartbeat toutes les 60 secondes (augmenté pour éviter les interférences)
     this.startHeartbeat();
@@ -70,7 +70,7 @@ class StatusService {
         // Ne pas envoyer de heartbeat si on est en mode présentation et qu'un heartbeat récent a été envoyé
         const now = Date.now();
         if (this.isInPresentationMode && (now - this.lastHeartbeatTime) < 45000) {
-          console.log('=== SKIPPING HEARTBEAT - PRESENTATION MODE v1.3.3 ===');
+          console.log('=== SKIPPING HEARTBEAT - PRESENTATION MODE v1.3.4 ===');
           return;
         }
         
@@ -106,7 +106,7 @@ class StatusService {
     try {
       if (!apiService.isDeviceRegistered()) return;
 
-      console.log('=== SENDING HEARTBEAT v1.3.3 ===');
+      console.log('=== SENDING HEARTBEAT v1.3.4 ===');
       console.log('Presentation mode:', this.isInPresentationMode);
       
       const status = await this.getCurrentStatus();
@@ -129,13 +129,13 @@ class StatusService {
       this.lastHeartbeatTime = Date.now();
 
       if (response.ok) {
-        console.log('Heartbeat sent successfully v1.3.3');
+        console.log('Heartbeat sent successfully v1.3.4');
       } else {
         console.log('Heartbeat failed with status:', response.status);
       }
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('Heartbeat timeout - continuing without blocking v1.3.3');
+        console.log('Heartbeat timeout - continuing without blocking v1.3.4');
       } else {
         console.log('Failed to send heartbeat:', error);
       }
@@ -175,7 +175,7 @@ class StatusService {
       }
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('Command check timeout - continuing v1.3.3');
+        console.log('Command check timeout - continuing v1.3.4');
       } else {
         console.log('Failed to check for remote commands:', error);
       }
@@ -186,7 +186,7 @@ class StatusService {
    * Exécute une commande à distance
    */
   private async executeRemoteCommand(command: RemoteCommand) {
-    console.log('=== EXECUTING REMOTE COMMAND v1.3.3 ===', command);
+    console.log('=== EXECUTING REMOTE COMMAND v1.3.4 ===', command);
 
     if (this.onRemoteCommandCallback) {
       this.onRemoteCommandCallback(command);
@@ -228,7 +228,7 @@ class StatusService {
    */
   private async getCurrentStatus(): Promise<DeviceStatus> {
     const deviceId = apiService.getDeviceId();
-    const appVersion = '1.3.3';
+    const appVersion = '1.3.4';
     
     // Récupérer les informations système (simulées pour l'exemple)
     const systemInfo = await this.getSystemInfo();
@@ -269,7 +269,7 @@ class StatusService {
    * Active le mode présentation (réduit la fréquence des heartbeats)
    */
   setPresentationMode(isActive: boolean) {
-    console.log('=== SETTING PRESENTATION MODE v1.3.3 ===', isActive);
+    console.log('=== SETTING PRESENTATION MODE v1.3.4 ===', isActive);
     this.isInPresentationMode = isActive;
     
     if (isActive) {
@@ -289,7 +289,7 @@ class StatusService {
       last_heartbeat: new Date().toISOString(),
     } as DeviceStatus;
 
-    console.log('Status updated v1.3.3:', this.currentStatus);
+    console.log('Status updated v1.3.4:', this.currentStatus);
 
     if (this.onStatusUpdateCallback) {
       this.onStatusUpdateCallback(this.currentStatus);

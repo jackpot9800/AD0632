@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Play, Pause, Monitor, Clock, CircleAlert as AlertCircle, RefreshCw, Repeat } from 'lucide-react-native';
+import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Monitor, Clock, CircleAlert as AlertCircle, RefreshCw, Repeat } from 'lucide-react-native';
 import { apiService, PresentationDetails, Slide } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
@@ -32,16 +32,17 @@ export default function PresentationScreen() {
   const [imageLoadError, setImageLoadError] = useState<{[key: number]: boolean}>({});
   const [loopCount, setLoopCount] = useState(0);
   
-  // Refs pour la gestion du timer ULTRA SIMPLIFIÉ v1.3.3
+  // Refs pour la gestion du timer ULTRA SIMPLIFIÉ v1.3.4
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const slideStartTimeRef = useRef<number>(0);
   const currentSlideDurationRef = useRef<number>(0);
   const isTimerActiveRef = useRef<boolean>(false);
+  const autoPlayExecutedRef = useRef<boolean>(false);
 
   // Nettoyage complet des ressources
   const cleanupResources = useCallback(() => {
-    console.log('=== CLEANING UP RESOURCES v1.3.3 ===');
+    console.log('=== CLEANING UP RESOURCES v1.3.4 ===');
     
     // Arrêter le timer principal
     if (timerRef.current) {
@@ -57,7 +58,7 @@ export default function PresentationScreen() {
     
     // Désactiver keep-awake
     deactivateKeepAwake();
-    console.log('=== KEEP-AWAKE DEACTIVATED v1.3.3 ===');
+    console.log('=== KEEP-AWAKE DEACTIVATED v1.3.4 ===');
     
     // Réinitialiser les refs
     slideStartTimeRef.current = 0;
@@ -73,39 +74,46 @@ export default function PresentationScreen() {
     
     // Activer keep-awake pour empêcher la mise en veille
     activateKeepAwake();
-    console.log('=== KEEP-AWAKE ACTIVATED v1.3.3 ===');
+    console.log('=== KEEP-AWAKE ACTIVATED v1.3.4 ===');
     
     // Configurer selon les paramètres
     if (loop_mode === 'true') {
-      console.log('Loop mode enabled v1.3.3');
+      console.log('Loop mode enabled v1.3.4');
       setIsLooping(true);
     }
     
     return cleanupResources;
   }, []);
 
-  // Démarrage automatique
+  // Démarrage automatique - CORRIGÉ v1.3.4
   useEffect(() => {
-    if (presentation && auto_play === 'true') {
-      console.log('=== AUTO-STARTING PRESENTATION v1.3.3 ===');
+    if (presentation && auto_play === 'true' && !autoPlayExecutedRef.current) {
+      console.log('=== AUTO-STARTING PRESENTATION v1.3.4 ===');
+      autoPlayExecutedRef.current = true;
+      
+      // Démarrer immédiatement
+      setIsPlaying(true);
+      
+      // Masquer les contrôles après un court délai
       const startTimer = setTimeout(() => {
-        setIsPlaying(true);
         setShowControls(false);
-      }, 1000);
+      }, 1500);
       
       return () => clearTimeout(startTimer);
     }
   }, [presentation, auto_play]);
 
-  // Gestion du timer ULTRA SIMPLIFIÉ v1.3.3
+  // Gestion du timer ULTRA SIMPLIFIÉ v1.3.4
   useEffect(() => {
-    console.log('=== TIMER EFFECT v1.3.3 ===');
+    console.log('=== TIMER EFFECT v1.3.4 ===');
     console.log('isPlaying:', isPlaying);
     console.log('currentSlideIndex:', currentSlideIndex);
     console.log('presentation slides:', presentation?.slides.length || 0);
 
-    if (isPlaying && presentation && presentation.slides.length > 0 && !isTimerActiveRef.current) {
-      startSlideTimer();
+    if (isPlaying && presentation && presentation.slides.length > 0) {
+      if (!isTimerActiveRef.current) {
+        startSlideTimer();
+      }
     } else if (!isPlaying) {
       stopSlideTimer();
     }
@@ -161,7 +169,7 @@ export default function PresentationScreen() {
     try {
       setLoading(true);
       setError(null);
-      console.log('=== LOADING PRESENTATION v1.3.3 ===');
+      console.log('=== LOADING PRESENTATION v1.3.4 ===');
       console.log('Presentation ID:', id);
       
       const data = await apiService.getPresentation(Number(id));
@@ -173,7 +181,7 @@ export default function PresentationScreen() {
       }
       
       // Log détaillé des slides avec leurs durées
-      console.log('=== SLIDES DETAILS v1.3.3 ===');
+      console.log('=== SLIDES DETAILS v1.3.4 ===');
       data.slides.forEach((slide, index) => {
         console.log(`Slide ${index + 1}:`, {
           id: slide.id,
@@ -199,7 +207,7 @@ export default function PresentationScreen() {
 
   const stopSlideTimer = useCallback(() => {
     if (timerRef.current) {
-      console.log('=== STOPPING TIMER v1.3.3 ===');
+      console.log('=== STOPPING TIMER v1.3.4 ===');
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
@@ -211,13 +219,13 @@ export default function PresentationScreen() {
 
   const startSlideTimer = useCallback(() => {
     if (!presentation || presentation.slides.length === 0) {
-      console.log('=== NO PRESENTATION OR SLIDES v1.3.3 ===');
+      console.log('=== NO PRESENTATION OR SLIDES v1.3.4 ===');
       return;
     }
 
     // Vérifier que l'index est valide
     if (currentSlideIndex >= presentation.slides.length) {
-      console.error('=== INVALID SLIDE INDEX v1.3.3 ===');
+      console.error('=== INVALID SLIDE INDEX v1.3.4 ===');
       console.error('Current index:', currentSlideIndex);
       console.error('Total slides:', presentation.slides.length);
       setCurrentSlideIndex(0);
@@ -226,7 +234,7 @@ export default function PresentationScreen() {
 
     // Empêcher les timers multiples
     if (isTimerActiveRef.current) {
-      console.log('=== TIMER ALREADY ACTIVE v1.3.3 ===');
+      console.log('=== TIMER ALREADY ACTIVE v1.3.4 ===');
       return;
     }
 
@@ -234,13 +242,13 @@ export default function PresentationScreen() {
 
     const currentSlide = presentation.slides[currentSlideIndex];
     if (!currentSlide) {
-      console.error('=== CURRENT SLIDE NOT FOUND v1.3.3 ===');
+      console.error('=== CURRENT SLIDE NOT FOUND v1.3.4 ===');
       return;
     }
 
     const slideDuration = currentSlide.duration * 1000; // Convertir en millisecondes
     
-    console.log(`=== STARTING TIMER v1.3.3 FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
+    console.log(`=== STARTING TIMER v1.3.4 FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
     console.log(`Slide: ${currentSlide.name}`);
     console.log(`Duration: ${currentSlide.duration}s (${slideDuration}ms)`);
     
@@ -251,7 +259,7 @@ export default function PresentationScreen() {
 
     // Timer simple avec setTimeout au lieu d'interval
     timerRef.current = setTimeout(() => {
-      console.log(`=== TIMER COMPLETED FOR SLIDE ${currentSlideIndex + 1} v1.3.3 ===`);
+      console.log(`=== TIMER COMPLETED FOR SLIDE ${currentSlideIndex + 1} v1.3.4 ===`);
       isTimerActiveRef.current = false;
       nextSlide();
     }, slideDuration);
@@ -273,21 +281,25 @@ export default function PresentationScreen() {
     
     updateTimeRemaining();
 
-    console.log('=== TIMER STARTED SUCCESSFULLY v1.3.3 ===');
+    console.log('=== TIMER STARTED SUCCESSFULLY v1.3.4 ===');
   }, [presentation, currentSlideIndex, isPlaying]);
 
   const nextSlide = useCallback(() => {
     if (!presentation || presentation.slides.length === 0) {
-      console.log('=== NO PRESENTATION FOR NEXT v1.3.3 ===');
+      console.log('=== NO PRESENTATION FOR NEXT v1.3.4 ===');
       return;
     }
     
-    console.log(`=== NEXT SLIDE LOGIC v1.3.3 ===`);
+    console.log(`=== NEXT SLIDE LOGIC v1.3.4 ===`);
     console.log(`Current: ${currentSlideIndex + 1}/${presentation.slides.length}`);
     console.log(`Is looping: ${isLooping}`);
     
     // Arrêter le timer actuel
     isTimerActiveRef.current = false;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     
     if (currentSlideIndex < presentation.slides.length - 1) {
       const nextIndex = currentSlideIndex + 1;
@@ -319,8 +331,16 @@ export default function PresentationScreen() {
     }
   }, [presentation, currentSlideIndex, isLooping, loopCount]);
 
+  const previousSlide = useCallback(() => {
+    if (currentSlideIndex > 0) {
+      console.log(`Moving to previous slide: ${currentSlideIndex}`);
+      setCurrentSlideIndex(currentSlideIndex - 1);
+    }
+    setShowControls(true);
+  }, [currentSlideIndex]);
+
   const togglePlayPause = useCallback(() => {
-    console.log('=== TOGGLE PLAY/PAUSE v1.3.3 ===');
+    console.log('=== TOGGLE PLAY/PAUSE v1.3.4 ===');
     const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     setShowControls(true);
@@ -346,7 +366,7 @@ export default function PresentationScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
         <Text style={styles.loadingText}>Chargement de la présentation...</Text>
-        <Text style={styles.loadingSubtext}>Version 1.3.3 - Keep-awake activé • Package.json fonctionnel</Text>
+        <Text style={styles.loadingSubtext}>Version 1.3.4 - Keep-awake activé • Package.json fonctionnel</Text>
       </View>
     );
   }
@@ -394,7 +414,7 @@ export default function PresentationScreen() {
   const currentSlide = presentation.slides[safeCurrentSlideIndex];
   
   if (!currentSlide) {
-    console.error('=== CRITICAL ERROR: NO CURRENT SLIDE v1.3.3 ===');
+    console.error('=== CRITICAL ERROR: NO CURRENT SLIDE v1.3.4 ===');
     setCurrentSlideIndex(0);
     return (
       <View style={styles.loadingContainer}>
@@ -429,7 +449,6 @@ export default function PresentationScreen() {
             style={styles.slideImage}
             resizeMode="contain"
             onError={() => handleImageError(currentSlide.id)}
-            onLoad={() => console.log('Image loaded:', currentSlide.name)}
           />
         )}
         
@@ -454,7 +473,7 @@ export default function PresentationScreen() {
         )}
 
         <View style={styles.versionIndicator}>
-          <Text style={styles.versionText}>v1.3.3</Text>
+          <Text style={styles.versionText}>v1.3.4</Text>
         </View>
       </TouchableOpacity>
 
@@ -474,7 +493,7 @@ export default function PresentationScreen() {
               
               <View style={styles.presentationInfo}>
                 <Text style={styles.presentationTitle} numberOfLines={1}>
-                  {presentation.name} {assigned === 'true' && '(Assignée)'} - v1.3.3
+                  {presentation.name} {assigned === 'true' && '(Assignée)'} - v1.3.4
                 </Text>
                 <Text style={styles.slideCounter}>
                   {safeCurrentSlideIndex + 1} / {presentation.slides.length}
@@ -493,6 +512,14 @@ export default function PresentationScreen() {
             <View style={styles.bottomControls}>
               <View style={styles.controlButtons}>
                 <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={previousSlide}
+                  disabled={currentSlideIndex === 0}
+                >
+                  <SkipBack size={24} color={currentSlideIndex === 0 ? "#6b7280" : "#ffffff"} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={[styles.controlButton, styles.playButton]}
                   onPress={togglePlayPause}
                 >
@@ -502,7 +529,24 @@ export default function PresentationScreen() {
                     <Play size={28} color="#ffffff" fill="#ffffff" />
                   )}
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={nextSlide}
+                >
+                  <SkipForward size={24} color="#ffffff" />
+                </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={[styles.loopButton, isLooping && styles.loopButtonActive]}
+                onPress={() => setIsLooping(!isLooping)}
+              >
+                <Repeat size={20} color="#ffffff" />
+                <Text style={styles.loopButtonText}>
+                  {isLooping ? 'Boucle activée' : 'Boucle désactivée'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </LinearGradient>
         </View>
@@ -732,11 +776,14 @@ const styles = StyleSheet.create({
   bottomControls: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    alignItems: 'center',
   },
   controlButtons: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 20,
+    gap: 20,
   },
   controlButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -751,5 +798,22 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
+  },
+  loopButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loopButtonActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+  },
+  loopButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
