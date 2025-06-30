@@ -13,13 +13,14 @@ export interface DeviceStatus {
   last_heartbeat: string;
   uptime_seconds?: number;
   memory_usage?: number;
+  battery_level?: number;
   wifi_strength?: number;
   app_version?: string;
   error_message?: string;
 }
 
 export interface RemoteCommand {
-  command: 'play' | 'pause' | 'stop' | 'restart' | 'next_slide' | 'prev_slide' | 'goto_slide' | 'assign_presentation' | 'reboot';
+  command: 'play' | 'pause' | 'stop' | 'restart' | 'next_slide' | 'prev_slide' | 'goto_slide' | 'assign_presentation' | 'reboot' | 'update_app';
   device_id: string;
   parameters?: {
     slide_index?: number;
@@ -35,11 +36,13 @@ class StatusService {
   private currentStatus: DeviceStatus | null = null;
   private onStatusUpdateCallback: ((status: DeviceStatus) => void) | null = null;
   private onRemoteCommandCallback: ((command: RemoteCommand) => void) | null = null;
+  private isInPresentationMode: boolean = false;
+  private lastHeartbeatTime: number = 0;
 
   async initialize() {
-    console.log('=== INITIALIZING STATUS SERVICE v1.5.0 ===');
+    console.log('=== INITIALIZING STATUS SERVICE v1.3.1 ===');
     
-    // Démarrer le heartbeat toutes les 60 secondes
+    // Démarrer le heartbeat toutes les 60 secondes (augmenté pour éviter les interférences)
     this.startHeartbeat();
     
     // Vérifier les commandes à distance toutes les 20 secondes
@@ -52,13 +55,21 @@ class StatusService {
   private startHeartbeat() {
     if (this.heartbeatInterval) return;
 
+    // Augmenter l'intervalle à 60 secondes pour éviter complètement les interférences
     this.heartbeatInterval = setInterval(async () => {
       try {
+        // Ne pas envoyer de heartbeat si on est en mode présentation et qu'un heartbeat récent a été envoyé
+        const now = Date.now();
+        if (this.isInPresentationMode && (now - this.lastHeartbeatTime) < 45000) {
+          console.log('=== SKIPPING HEARTBEAT - PRESENTATION MODE v1.3.1 ===');
+          return;
+        }
+        
         await this.sendHeartbeat();
       } catch (error) {
         console.log('Heartbeat failed:', error);
       }
-    }, 60000); // 60 secondes
+    }, 60000); // Augmenté à 60 secondes
 
     // Envoyer immédiatement le premier heartbeat
     this.sendHeartbeat();
@@ -76,7 +87,7 @@ class StatusService {
       } catch (error) {
         console.log('Command check failed:', error);
       }
-    }, 20000); // 20 secondes
+    }, 20000); // Augmenté à 20 secondes
   }
 
   /**
@@ -86,9 +97,14 @@ class StatusService {
     try {
       if (!apiService.isDeviceRegistered()) return;
 
-      console.log('=== SENDING HEARTBEAT v1.5.0 ===');
+      console.log('=== SENDING HEARTBEAT v1.3.1 ===');
+      console.log('Presentation mode:', this.isInPresentationMode);
       
       const status = await this.getCurrentStatus();
+      
+      // Utiliser un timeout plus court pour éviter de bloquer l'interface
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 secondes max
       
       const response = await fetch(`${apiService.getServerUrl()}/appareil/heartbeat`, {
         method: 'POST',
@@ -97,13 +113,23 @@ class StatusService {
           'X-Device-ID': apiService.getDeviceId(),
         },
         body: JSON.stringify(status),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+      this.lastHeartbeatTime = Date.now();
+
       if (response.ok) {
-        console.log('Heartbeat sent successfully v1.5.0');
+        console.log('Heartbeat sent successfully v1.3.1');
+      } else {
+        console.log('Heartbeat failed with status:', response.status);
       }
     } catch (error) {
-      console.log('Failed to send heartbeat:', error);
+      if (error.name === 'AbortError') {
+        console.log('Heartbeat timeout - continuing without blocking v1.3.1');
+      } else {
+        console.log('Failed to send heartbeat:', error);
+      }
     }
   }
 
@@ -114,13 +140,20 @@ class StatusService {
     try {
       if (!apiService.isDeviceRegistered()) return;
 
+      // Utiliser un timeout plus court pour les commandes
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes max
+
       const response = await fetch(`${apiService.getServerUrl()}/appareil/commandes`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'X-Device-ID': apiService.getDeviceId(),
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -132,7 +165,11 @@ class StatusService {
         }
       }
     } catch (error) {
-      console.log('Failed to check for remote commands:', error);
+      if (error.name === 'AbortError') {
+        console.log('Command check timeout - continuing v1.3.1');
+      } else {
+        console.log('Failed to check for remote commands:', error);
+      }
     }
   }
 
@@ -140,7 +177,7 @@ class StatusService {
    * Exécute une commande à distance
    */
   private async executeRemoteCommand(command: RemoteCommand) {
-    console.log('=== EXECUTING REMOTE COMMAND v1.5.0 ===', command);
+    console.log('=== EXECUTING REMOTE COMMAND v1.3.1 ===', command);
 
     if (this.onRemoteCommandCallback) {
       this.onRemoteCommandCallback(command);
@@ -157,15 +194,23 @@ class StatusService {
    */
   private async acknowledgeCommand(commandId: string) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       await fetch(`${apiService.getServerUrl()}/appareil/commandes/${commandId}/ack`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Device-ID': apiService.getDeviceId(),
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
     } catch (error) {
-      console.log('Failed to acknowledge command:', error);
+      if (error.name !== 'AbortError') {
+        console.log('Failed to acknowledge command:', error);
+      }
     }
   }
 
@@ -174,7 +219,7 @@ class StatusService {
    */
   private async getCurrentStatus(): Promise<DeviceStatus> {
     const deviceId = apiService.getDeviceId();
-    const appVersion = '1.5.0';
+    const appVersion = '1.3.1';
     
     // Récupérer les informations système (simulées pour l'exemple)
     const systemInfo = await this.getSystemInfo();
@@ -212,6 +257,19 @@ class StatusService {
   }
 
   /**
+   * Active le mode présentation (réduit la fréquence des heartbeats)
+   */
+  setPresentationMode(isActive: boolean) {
+    console.log('=== SETTING PRESENTATION MODE v1.3.1 ===', isActive);
+    this.isInPresentationMode = isActive;
+    
+    if (isActive) {
+      // En mode présentation, envoyer un heartbeat immédiat puis réduire la fréquence
+      this.sendHeartbeat();
+    }
+  }
+
+  /**
    * Met à jour le statut de l'appareil
    */
   updateStatus(updates: Partial<DeviceStatus>) {
@@ -222,7 +280,7 @@ class StatusService {
       last_heartbeat: new Date().toISOString(),
     } as DeviceStatus;
 
-    console.log('Status updated v1.5.0:', this.currentStatus);
+    console.log('Status updated v1.3.1:', this.currentStatus);
 
     if (this.onStatusUpdateCallback) {
       this.onStatusUpdateCallback(this.currentStatus);
@@ -249,6 +307,9 @@ class StatusService {
    */
   updatePlaybackStatus(status: 'playing' | 'paused' | 'stopped') {
     this.updateStatus({ status });
+    
+    // Activer/désactiver le mode présentation selon le statut
+    this.setPresentationMode(status === 'playing');
   }
 
   /**
@@ -289,6 +350,7 @@ class StatusService {
       this.commandCheckInterval = null;
     }
 
+    this.setPresentationMode(false);
     this.updateStatus({ status: 'offline' });
   }
 
