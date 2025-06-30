@@ -8,27 +8,19 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
-  Platform,
   Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   Server, 
   Wifi, 
-  WifiOff, 
   Check, 
   CircleAlert as AlertCircle, 
-  Monitor, 
   Settings as SettingsIcon, 
-  RefreshCw, 
   Trash2, 
-  UserPlus, 
-  Activity, 
-  Zap,
-  Power
+  UserPlus
 } from 'lucide-react-native';
 import { apiService } from '@/services/ApiService';
-import { statusService } from '@/services/StatusService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SettingsScreen() {
@@ -38,17 +30,13 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
   
-  // Paramètres avancés
-  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+  // Paramètres simplifiés
+  const [autoStartEnabled, setAutoStartEnabled] = useState(true);
   const [keepAwakeEnabled, setKeepAwakeEnabled] = useState(true);
-  const [remoteControlEnabled, setRemoteControlEnabled] = useState(true);
-  const [statusReportingEnabled, setStatusReportingEnabled] = useState(true);
 
   useEffect(() => {
     loadCurrentSettings();
-    loadDebugInfo();
     loadAdvancedSettings();
   }, []);
 
@@ -62,26 +50,13 @@ export default function SettingsScreen() {
     setOriginalUrl(currentUrl);
   };
 
-  const loadDebugInfo = async () => {
-    try {
-      const info = await apiService.getDebugInfo();
-      setDebugInfo(info);
-    } catch (error) {
-      console.error('Error loading debug info:', error);
-    }
-  };
-
   const loadAdvancedSettings = async () => {
     try {
       const autoStart = await AsyncStorage.getItem('settings_auto_start');
       const keepAwake = await AsyncStorage.getItem('settings_keep_awake');
-      const remoteControl = await AsyncStorage.getItem('settings_remote_control');
-      const statusReporting = await AsyncStorage.getItem('settings_status_reporting');
       
-      setAutoStartEnabled(autoStart === 'true');
+      setAutoStartEnabled(autoStart !== 'false');
       setKeepAwakeEnabled(keepAwake !== 'false');
-      setRemoteControlEnabled(remoteControl !== 'false');
-      setStatusReportingEnabled(statusReporting !== 'false');
     } catch (error) {
       console.error('Error loading advanced settings:', error);
     }
@@ -91,8 +66,6 @@ export default function SettingsScreen() {
     try {
       await AsyncStorage.setItem('settings_auto_start', autoStartEnabled.toString());
       await AsyncStorage.setItem('settings_keep_awake', keepAwakeEnabled.toString());
-      await AsyncStorage.setItem('settings_remote_control', remoteControlEnabled.toString());
-      await AsyncStorage.setItem('settings_status_reporting', statusReportingEnabled.toString());
       
       Alert.alert(
         'Paramètres sauvegardés',
@@ -129,7 +102,7 @@ export default function SettingsScreen() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'PresentationKiosk/1.3.1 (FireTV)',
+          'User-Agent': 'PresentationKiosk/1.4.0 (FireTV)',
           'Cache-Control': 'no-cache',
         },
       });
@@ -145,7 +118,7 @@ export default function SettingsScreen() {
             
             Alert.alert(
               'Test de connexion réussi',
-              `Connexion au serveur établie avec succès !\n\nVersion API: ${data.version || 'N/A'}\nStatut: ${data.api_status || data.status || 'running'}`,
+              `Connexion au serveur établie avec succès !`,
               [{ text: 'OK' }]
             );
             return true;
@@ -158,7 +131,7 @@ export default function SettingsScreen() {
       setConnectionStatus('error');
       Alert.alert(
         'Test de connexion échoué',
-        `Impossible de se connecter au serveur.\n\nStatut HTTP: ${response.status}`,
+        `Impossible de se connecter au serveur.`,
         [{ text: 'OK' }]
       );
       return false;
@@ -168,7 +141,7 @@ export default function SettingsScreen() {
       
       Alert.alert(
         'Erreur de connexion',
-        `Impossible de joindre le serveur:\n\n${error instanceof Error ? error.message : 'Erreur réseau'}`,
+        `Impossible de joindre le serveur`,
         [{ text: 'OK' }]
       );
       return false;
@@ -184,19 +157,18 @@ export default function SettingsScreen() {
     setSaving(true);
     
     try {
-      console.log('=== SAVING SETTINGS v1.3.1 ===');
+      console.log('=== SAVING SETTINGS v1.4.0 ===');
       
       const success = await apiService.setServerUrl(serverUrl.trim());
       
       if (success) {
         setOriginalUrl(serverUrl.trim());
         setConnectionStatus('success');
-        await loadDebugInfo();
         
         Alert.alert(
           'Configuration sauvegardée',
           'La configuration a été sauvegardée avec succès.',
-          [{ text: 'Parfait !' }]
+          [{ text: 'OK' }]
         );
       } else {
         setConnectionStatus('error');
@@ -211,7 +183,7 @@ export default function SettingsScreen() {
       setConnectionStatus('error');
       Alert.alert(
         'Erreur de sauvegarde',
-        `Une erreur est survenue:\n\n${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        `Une erreur est survenue`,
         [{ text: 'OK' }]
       );
     } finally {
@@ -232,19 +204,8 @@ export default function SettingsScreen() {
     setRegistering(true);
     
     try {
-      console.log('=== MANUAL DEVICE REGISTRATION v1.3.1 ===');
+      console.log('=== MANUAL DEVICE REGISTRATION v1.4.0 ===');
       
-      if (apiService.isDeviceRegistered()) {
-        Alert.alert(
-          'Appareil déjà enregistré',
-          `Cet appareil est déjà enregistré.\n\nID: ${apiService.getDeviceId()}`,
-          [
-            { text: 'OK', style: 'cancel' }
-          ]
-        );
-        return;
-      }
-
       const connectionOk = await apiService.testConnection();
       if (!connectionOk) {
         throw new Error('Impossible de se connecter au serveur');
@@ -252,12 +213,10 @@ export default function SettingsScreen() {
 
       const registrationOk = await apiService.registerDevice();
       if (registrationOk) {
-        await loadDebugInfo();
-        
         Alert.alert(
           'Enregistrement réussi !',
-          `L'appareil a été enregistré avec succès.\n\nID: ${apiService.getDeviceId()}`,
-          [{ text: 'Parfait !' }]
+          `L'appareil a été enregistré avec succès.`,
+          [{ text: 'OK' }]
         );
       } else {
         throw new Error('L\'enregistrement a échoué');
@@ -266,7 +225,7 @@ export default function SettingsScreen() {
       console.error('Registration failed:', error);
       Alert.alert(
         'Erreur d\'enregistrement',
-        `Impossible d'enregistrer l'appareil:\n\n${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        `Impossible d'enregistrer l'appareil`,
         [{ text: 'OK' }]
       );
     } finally {
@@ -287,7 +246,6 @@ export default function SettingsScreen() {
             setServerUrl('');
             setConnectionStatus('idle');
             await apiService.resetDevice();
-            await loadDebugInfo();
             
             Alert.alert(
               'Paramètres réinitialisés',
@@ -332,7 +290,7 @@ export default function SettingsScreen() {
             <SettingsIcon size={32} color="#ffffff" />
           </LinearGradient>
           <Text style={styles.title}>Paramètres</Text>
-          <Text style={styles.subtitle}>Version 1.3.1 - Auto-start + Keep-awake + Monitoring</Text>
+          <Text style={styles.subtitle}>Version 1.4.0 - Simplifiée</Text>
         </View>
 
         <View style={styles.section}>
@@ -415,11 +373,10 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Paramètres avancés</Text>
+          <Text style={styles.sectionTitle}>Paramètres simplifiés</Text>
           
           <View style={styles.settingRow}>
             <View style={styles.settingLabelContainer}>
-              <Power size={20} color={autoStartEnabled ? "#10b981" : "#6b7280"} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Démarrage automatique</Text>
                 <Text style={styles.settingDescription}>
@@ -437,9 +394,8 @@ export default function SettingsScreen() {
           
           <View style={styles.settingRow}>
             <View style={styles.settingLabelContainer}>
-              <Monitor size={20} color={keepAwakeEnabled ? "#10b981" : "#6b7280"} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Keep-awake (v14.1.4)</Text>
+                <Text style={styles.settingLabel}>Keep-awake</Text>
                 <Text style={styles.settingDescription}>
                   Empêcher la mise en veille pendant les présentations
                 </Text>
@@ -450,42 +406,6 @@ export default function SettingsScreen() {
               onValueChange={setKeepAwakeEnabled}
               trackColor={{ false: '#6b7280', true: '#10b981' }}
               thumbColor={keepAwakeEnabled ? '#ffffff' : '#f4f3f4'}
-            />
-          </View>
-          
-          <View style={styles.settingRow}>
-            <View style={styles.settingLabelContainer}>
-              <Zap size={20} color={remoteControlEnabled ? "#10b981" : "#6b7280"} />
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Contrôle à distance</Text>
-                <Text style={styles.settingDescription}>
-                  Permettre le contrôle depuis la plateforme web
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={remoteControlEnabled}
-              onValueChange={setRemoteControlEnabled}
-              trackColor={{ false: '#6b7280', true: '#10b981' }}
-              thumbColor={remoteControlEnabled ? '#ffffff' : '#f4f3f4'}
-            />
-          </View>
-          
-          <View style={styles.settingRow}>
-            <View style={styles.settingLabelContainer}>
-              <Activity size={20} color={statusReportingEnabled ? "#10b981" : "#6b7280"} />
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Rapport de statut</Text>
-                <Text style={styles.settingDescription}>
-                  Envoyer le statut au serveur (monitoring 5min)
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={statusReportingEnabled}
-              onValueChange={setStatusReportingEnabled}
-              trackColor={{ false: '#6b7280', true: '#10b981' }}
-              thumbColor={statusReportingEnabled ? '#ffffff' : '#f4f3f4'}
             />
           </View>
           
@@ -505,54 +425,27 @@ export default function SettingsScreen() {
           
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Monitor size={20} color="#9ca3af" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Version</Text>
-                <Text style={styles.infoValue}>1.3.1 - Auto-start + Keep-awake + Monitoring</Text>
+                <Text style={styles.infoValue}>1.4.0 - Simplifiée</Text>
               </View>
             </View>
             
-            {debugInfo && (
-              <>
-                <View style={styles.infoRow}>
-                  <Server size={20} color="#9ca3af" />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>ID de l'appareil</Text>
-                    <Text style={styles.infoValue}>{debugInfo.deviceId}</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.infoRow}>
-                  <Check size={20} color={debugInfo.isRegistered ? "#10b981" : "#ef4444"} />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Statut</Text>
-                    <Text style={[styles.infoValue, { color: debugInfo.isRegistered ? "#10b981" : "#ef4444" }]}>
-                      {debugInfo.isRegistered ? 'Enregistré' : 'Non enregistré'}
-                    </Text>
-                  </View>
-                </View>
-                
-                <View style={styles.infoRow}>
-                  <Activity size={20} color={debugInfo.assignmentCheckEnabled ? "#10b981" : "#6b7280"} />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Monitoring assignations</Text>
-                    <Text style={styles.infoValue}>
-                      {debugInfo.assignmentCheckEnabled ? 'Actif (5min)' : 'Inactif'}
-                    </Text>
-                  </View>
-                </View>
-                
-                <View style={styles.infoRow}>
-                  <Star size={20} color={debugInfo.defaultCheckEnabled ? "#10b981" : "#6b7280"} />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Monitoring par défaut</Text>
-                    <Text style={styles.infoValue}>
-                      {debugInfo.defaultCheckEnabled ? 'Actif (5min)' : 'Inactif'}
-                    </Text>
-                  </View>
-                </View>
-              </>
-            )}
+            <View style={styles.infoRow}>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>ID de l'appareil</Text>
+                <Text style={styles.infoValue}>{apiService.getDeviceId()}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.infoRow}>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Statut</Text>
+                <Text style={styles.infoValue}>
+                  {apiService.isDeviceRegistered() ? 'Enregistré' : 'Non enregistré'}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -702,7 +595,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingTextContainer: {
-    marginLeft: 12,
     flex: 1,
   },
   settingLabel: {
@@ -742,7 +634,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   infoContent: {
-    marginLeft: 12,
     flex: 1,
   },
   infoLabel: {

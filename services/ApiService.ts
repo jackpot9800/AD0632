@@ -88,13 +88,10 @@ class ApiService {
   private assignmentCheckEnabled: boolean = false;
   private defaultCheckEnabled: boolean = false;
   private apiType: 'standard' | 'affichageDynamique' = 'affichageDynamique'; // Par défaut affichageDynamique
-  private lastConnectionError: string = '';
-  private connectionAttempts: number = 0;
-  private directFetchMode: boolean = false; // Mode fetch direct pour contourner les problèmes
 
   async initialize() {
     try {
-      console.log('=== INITIALIZING API SERVICE ===');
+      console.log('=== INITIALIZING API SERVICE v1.4.0 ===');
       
       const savedUrl = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
       const savedDeviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
@@ -204,11 +201,11 @@ class ApiService {
     // Détecter le type d'API d'abord
     await this.detectApiType();
 
-    console.log('=== STARTING ASSIGNMENT CHECK ===');
+    console.log('=== STARTING ASSIGNMENT CHECK v1.4.0 ===');
     console.log('API Type:', this.apiType);
     console.log('Base URL:', this.baseUrl);
 
-    // CORRECTION: Activer directement la surveillance pour affichageDynamique
+    // Activer directement la surveillance pour affichageDynamique
     if (this.apiType === 'affichageDynamique') {
       console.log('✅ Enabling assignment check for affichageDynamique API');
       this.assignmentCheckEnabled = true;
@@ -239,16 +236,16 @@ class ApiService {
     // Vérifier immédiatement
     this.checkForAssignedPresentation();
 
-    // Puis vérifier toutes les 15 secondes pour les assignations (plus fréquent)
+    // Puis vérifier toutes les 5 minutes
     this.assignmentCheckInterval = setInterval(async () => {
       try {
         await this.checkForAssignedPresentation();
       } catch (error) {
         console.log('Assignment check failed:', error);
       }
-    }, 15000); // 15 secondes pour une réactivité maximale
+    }, 5 * 60 * 1000); // 5 minutes
 
-    console.log('✅ Assignment check started with 15s interval');
+    console.log('✅ Assignment check started with 5min interval');
   }
 
   /**
@@ -263,11 +260,11 @@ class ApiService {
     // Détecter le type d'API d'abord
     await this.detectApiType();
 
-    console.log('=== STARTING DEFAULT PRESENTATION CHECK ===');
+    console.log('=== STARTING DEFAULT PRESENTATION CHECK v1.4.0 ===');
     console.log('API Type:', this.apiType);
     console.log('Base URL:', this.baseUrl);
 
-    // CORRECTION: Activer directement la surveillance pour affichageDynamique
+    // Activer directement la surveillance pour affichageDynamique
     if (this.apiType === 'affichageDynamique') {
       console.log('✅ Enabling default presentation check for affichageDynamique API');
       this.defaultCheckEnabled = true;
@@ -298,16 +295,16 @@ class ApiService {
     // Vérifier immédiatement
     this.checkForDefaultPresentation();
 
-    // Puis vérifier toutes les 30 secondes pour les présentations par défaut
+    // Puis vérifier toutes les 5 minutes
     this.defaultCheckInterval = setInterval(async () => {
       try {
         await this.checkForDefaultPresentation();
       } catch (error) {
         console.log('Default presentation check failed:', error);
       }
-    }, 30000);
+    }, 5 * 60 * 1000); // 5 minutes
 
-    console.log('✅ Default presentation check started with 30s interval');
+    console.log('✅ Default presentation check started with 5min interval');
   }
 
   /**
@@ -344,7 +341,7 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR ASSIGNED PRESENTATION ===');
+      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v1.4.0 ===');
       const endpoint = this.getEndpoint('/device/assigned-presentation');
       console.log('Using endpoint:', endpoint);
       console.log('API Type:', this.apiType);
@@ -400,7 +397,7 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR DEFAULT PRESENTATION ===');
+      console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.4.0 ===');
       const endpoint = this.getEndpoint('/device/default-presentation');
       console.log('Using endpoint:', endpoint);
       console.log('Device ID:', this.deviceId);
@@ -499,300 +496,6 @@ class ApiService {
     }
   }
 
-  /**
-   * Debug de l'appareil via l'API
-   */
-  async debugDevice(): Promise<any> {
-    try {
-      if (!this.baseUrl || !this.deviceId) {
-        return {
-          error: 'Device not configured',
-          deviceId: this.deviceId,
-          baseUrl: this.baseUrl
-        };
-      }
-
-      console.log('=== DEBUGGING DEVICE VIA API ===');
-      const response = await this.makeRequest<any>(`/debug/appareil/${this.deviceId}`);
-      return response;
-    } catch (error) {
-      console.log('Debug endpoint not available:', error);
-      return {
-        error: 'Debug endpoint not available',
-        deviceId: this.deviceId,
-        baseUrl: this.baseUrl,
-        isRegistered: this.isRegistered,
-        assignmentCheckEnabled: this.assignmentCheckEnabled,
-        defaultCheckEnabled: this.defaultCheckEnabled,
-        apiType: this.apiType,
-        lastConnectionError: this.lastConnectionError,
-        connectionAttempts: this.connectionAttempts
-      };
-    }
-  }
-
-  async setServerUrl(url: string): Promise<boolean> {
-    try {
-      console.log('=== SETTING SERVER URL ===');
-      console.log('Input URL:', url);
-      
-      // Nettoyer l'URL et s'assurer qu'elle se termine par index.php
-      let cleanUrl = url.replace(/\/+$/, '');
-      
-      // Si l'URL ne se termine pas par index.php, l'ajouter
-      if (!cleanUrl.endsWith('index.php')) {
-        if (!cleanUrl.endsWith('/')) {
-          cleanUrl += '/';
-        }
-        cleanUrl += 'index.php';
-      }
-      
-      console.log('Clean URL:', cleanUrl);
-      
-      this.baseUrl = cleanUrl;
-      await AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, cleanUrl);
-      
-      // Réinitialiser le statut d'enregistrement pour le nouveau serveur
-      this.isRegistered = false;
-      this.enrollmentToken = '';
-      this.assignmentCheckEnabled = false;
-      this.defaultCheckEnabled = false;
-      this.apiType = 'affichageDynamique'; // Par défaut affichageDynamique
-      this.lastConnectionError = '';
-      this.connectionAttempts = 0;
-      
-      await AsyncStorage.removeItem(STORAGE_KEYS.DEVICE_REGISTERED);
-      await AsyncStorage.removeItem(STORAGE_KEYS.ENROLLMENT_TOKEN);
-      await AsyncStorage.removeItem(STORAGE_KEYS.ASSIGNED_PRESENTATION);
-      await AsyncStorage.removeItem(STORAGE_KEYS.DEFAULT_PRESENTATION);
-      
-      // Arrêter les anciens checks
-      this.stopAssignmentCheck();
-      this.stopDefaultPresentationCheck();
-      
-      // Détecter le type d'API
-      await this.detectApiType();
-      
-      // Tester la connexion
-      const connectionOk = await this.testConnection();
-      if (connectionOk) {
-        // Enregistrer l'appareil
-        const registrationOk = await this.registerDevice();
-        if (registrationOk) {
-          console.log('=== SERVER SETUP COMPLETE ===');
-          return true;
-        } else {
-          console.warn('Connection OK but registration failed');
-          return true; // On continue même si l'enregistrement échoue
-        }
-      }
-      
-      console.error('Connection test failed');
-      return false;
-    } catch (error) {
-      console.error('Error setting server URL:', error);
-      return false;
-    }
-  }
-
-  getServerUrl(): string {
-    return this.baseUrl;
-  }
-
-  getDeviceId(): string {
-    return this.deviceId;
-  }
-
-  isDeviceRegistered(): boolean {
-    return this.isRegistered;
-  }
-  
-  getLastConnectionError(): string {
-    return this.lastConnectionError;
-  }
-
-  /**
-   * Obtient l'URL de base du serveur pour les images
-   */
-  private getBaseServerUrl(): string {
-    if (!this.baseUrl) return '';
-    
-    console.log('=== BUILDING BASE SERVER URL ===');
-    console.log('Original baseUrl:', this.baseUrl);
-    
-    // Supprimer /api/index.php ou /index.php de l'URL pour obtenir l'URL de base
-    let baseServerUrl = this.baseUrl;
-    
-    // Si l'URL contient /api/index.php, supprimer cette partie
-    if (baseServerUrl.includes('/api/index.php')) {
-      baseServerUrl = baseServerUrl.replace('/api/index.php', '');
-    }
-    // Sinon si elle contient juste /index.php, supprimer cette partie
-    else if (baseServerUrl.includes('/index.php')) {
-      baseServerUrl = baseServerUrl.replace('/index.php', '');
-    }
-    
-    console.log('Base server URL for images:', baseServerUrl);
-    return baseServerUrl;
-  }
-
-  /**
-   * Nettoie une réponse PHP de manière robuste
-   */
-  private cleanPhpResponse(responseText: string): string {
-    console.log('=== CLEANING PHP RESPONSE ===');
-    console.log('Original length:', responseText.length);
-    console.log('First 500 chars:', responseText.substring(0, 500));
-    
-    let cleanedResponse = responseText.trim();
-    
-    // 1. Chercher d'abord un JSON valide dans la réponse
-    const jsonMatches = cleanedResponse.match(/\{[\s\S]*\}/);
-    if (jsonMatches && jsonMatches.length > 0) {
-      const potentialJson = jsonMatches[0];
-      try {
-        // Tester si c'est du JSON valide
-        JSON.parse(potentialJson);
-        console.log('Found valid JSON in response');
-        return potentialJson;
-      } catch (e) {
-        console.log('Found JSON-like text but invalid JSON, continuing with cleaning...');
-      }
-    }
-    
-    // 2. Si pas de JSON trouvé, nettoyer les erreurs PHP
-    const phpErrorPatterns = [
-      /<br\s*\/?>\s*<b>Warning<\/b>:.*?<br\s*\/?>/gi,
-      /<br\s*\/?>\s*<b>Notice<\/b>:.*?<br\s*\/?>/gi,
-      /<br\s*\/?>\s*<b>Fatal error<\/b>:.*?<br\s*\/?>/gi,
-      /<br\s*\/?>\s*<b>Parse error<\/b>:.*?<br\s*\/?>/gi,
-      /Warning:.*?in.*?on line.*?\n/gi,
-      /Notice:.*?in.*?on line.*?\n/gi,
-      /Fatal error:.*?in.*?on line.*?\n/gi,
-      /Parse error:.*?in.*?on line.*?\n/gi,
-      /<br\s*\/?>\s*<b>[^<]*<\/b>:\s*[^<]*<br\s*\/?>/gi,
-      /(<br\s*\/?>){2,}/gi,
-    ];
-    
-    let foundErrors = [];
-    
-    // Supprimer chaque type d'erreur PHP
-    phpErrorPatterns.forEach((pattern, index) => {
-      const matches = cleanedResponse.match(pattern);
-      if (matches) {
-        foundErrors.push(`Pattern ${index + 1}: ${matches.length} matches`);
-        cleanedResponse = cleanedResponse.replace(pattern, '');
-      }
-    });
-    
-    // Supprimer les <br> orphelins et espaces
-    cleanedResponse = cleanedResponse
-      .replace(/^(\s*<br\s*\/?>)+/gi, '')
-      .replace(/(\s*<br\s*\/?>)+$/gi, '')
-      .trim();
-    
-    if (foundErrors.length > 0) {
-      console.log('=== PHP ERRORS CLEANED ===');
-      console.log('Errors found and removed:', foundErrors);
-    }
-    
-    return cleanedResponse;
-  }
-
-  /**
-   * Extraction JSON avec gestion d'erreurs améliorée
-   */
-  private extractJsonFromResponse(responseText: string): any {
-    console.log('=== EXTRACTING JSON FROM RESPONSE ===');
-    
-    // Nettoyer d'abord les erreurs PHP
-    let cleanedResponse = this.cleanPhpResponse(responseText);
-    
-    // Si la réponse est vide après nettoyage
-    if (!cleanedResponse.trim()) {
-      throw new Error('Réponse vide après suppression des erreurs PHP');
-    }
-    
-    // Vérifier si c'est une page d'erreur HTML complète
-    if (cleanedResponse.includes('<!DOCTYPE') || cleanedResponse.includes('<html')) {
-      console.error('Response is a full HTML page:', cleanedResponse.substring(0, 200));
-      
-      // Essayer d'extraire des informations utiles de la page d'erreur
-      if (cleanedResponse.includes('404') || cleanedResponse.includes('Not Found')) {
-        throw new Error('Endpoint non trouvé (404). Vérifiez que votre API est correctement configurée.');
-      } else if (cleanedResponse.includes('500') || cleanedResponse.includes('Internal Server Error')) {
-        throw new Error('Erreur serveur interne (500). Vérifiez les logs PHP de votre serveur.');
-      } else if (cleanedResponse.includes('403') || cleanedResponse.includes('Forbidden')) {
-        throw new Error('Accès interdit (403). Vérifiez les permissions de votre serveur.');
-      } else {
-        throw new Error('Le serveur a retourné une page HTML au lieu de JSON.');
-      }
-    }
-    
-    // Vérifier si ça commence encore par du HTML après nettoyage
-    if (cleanedResponse.trim().startsWith('<')) {
-      console.error('Still HTML after cleaning:', cleanedResponse.substring(0, 300));
-      throw new Error('La réponse contient encore du HTML après nettoyage.');
-    }
-    
-    try {
-      const jsonData = JSON.parse(cleanedResponse);
-      console.log('=== JSON PARSED SUCCESSFULLY ===');
-      console.log('Data keys:', Object.keys(jsonData));
-      return jsonData;
-    } catch (parseError) {
-      console.error('=== JSON PARSE ERROR ===');
-      console.error('Parse error:', parseError);
-      console.error('Cleaned response:', cleanedResponse.substring(0, 500));
-      
-      let errorHint = '';
-      if (cleanedResponse.includes('<?php')) {
-        errorHint = '\n\nIl semble que le code PHP ne soit pas exécuté.';
-      } else if (cleanedResponse.includes('Endpoint not found')) {
-        errorHint = '\n\nL\'endpoint demandé n\'existe pas.';
-      } else if (cleanedResponse.includes('Database')) {
-        errorHint = '\n\nErreur de base de données.';
-      }
-      
-      throw new Error(`Réponse du serveur invalide${errorHint}\n\nRéponse: ${cleanedResponse.substring(0, 200)}...`);
-    }
-  }
-
-  /**
-   * Crée un timeout manuel
-   */
-  private createTimeoutPromise(timeoutMs: number): Promise<never> {
-    return new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Timeout après ${timeoutMs}ms`));
-      }, timeoutMs);
-    });
-  }
-
-  /**
-   * Effectue une requête avec timeout manuel et configuration réseau améliorée pour APK
-   */
-  private async fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> {
-    // Configuration spéciale pour APK compilée
-    const enhancedOptions: RequestInit = {
-      ...options,
-      // Forcer l'utilisation de HTTP/1.1 pour éviter les problèmes de certificats
-      // et améliorer la compatibilité avec les serveurs PHP
-      headers: {
-        ...options.headers,
-        'Connection': 'keep-alive',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    };
-
-    const fetchPromise = fetch(url, enhancedOptions);
-    const timeoutPromise = this.createTimeoutPromise(timeoutMs);
-    
-    return Promise.race([fetchPromise, timeoutPromise]);
-  }
-
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     if (!this.baseUrl) {
       throw new Error('URL du serveur non configurée');
@@ -803,27 +506,19 @@ class ApiService {
     const finalEndpoint = this.getEndpoint(cleanEndpoint);
     const url = `${this.baseUrl}${finalEndpoint}`;
     
-    console.log('=== API REQUEST ===');
-    console.log('Original endpoint:', cleanEndpoint);
-    console.log('Final endpoint:', finalEndpoint);
+    console.log('=== API REQUEST v1.4.0 ===');
     console.log('URL:', url);
     console.log('Method:', options.method || 'GET');
-    console.log('Device ID:', this.deviceId);
-    console.log('API Type:', this.apiType);
     
-    // Headers améliorés pour APK compilée
+    // Headers améliorés
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'User-Agent': 'PresentationKiosk/2.0 (Android; FireTV)',
+      'Cache-Control': 'no-cache',
+      'User-Agent': 'PresentationKiosk/1.4.0 (FireTV)',
       'X-Device-ID': this.deviceId,
       'X-Device-Type': 'firetv',
-      'X-App-Version': '2.0.0',
-      'X-Platform': 'android',
-      'Connection': 'keep-alive',
+      'X-App-Version': '1.4.0',
       ...options.headers,
     };
 
@@ -836,79 +531,47 @@ class ApiService {
     }
     
     try {
-      this.connectionAttempts++;
-      console.log(`Connection attempt #${this.connectionAttempts} to ${url}`);
-      
-      const response = await this.fetchWithTimeout(url, {
+      const response = await fetch(url, {
         ...options,
         headers,
-      }, 30000);
+      });
 
       console.log('=== API RESPONSE ===');
       console.log('Status:', response.status, response.statusText);
 
-      const responseText = await response.text();
-      console.log('=== RAW RESPONSE ===');
-      console.log('Length:', responseText.length);
-      console.log('First 1000 chars:', responseText.substring(0, 1000));
-
       if (!response.ok) {
         console.error('=== HTTP ERROR ===');
         console.error('Status:', response.status);
-        console.error('Response:', responseText);
         
-        // Stocker l'erreur pour le diagnostic
-        this.lastConnectionError = `HTTP ${response.status}: ${responseText.substring(0, 200)}`;
-        
-        if (response.status === 500) {
-          throw new Error('Erreur serveur interne (500). Vérifiez les logs PHP de votre serveur.');
-        } else if (response.status === 404) {
-          try {
-            const errorData = this.extractJsonFromResponse(responseText);
-            if (errorData.available_endpoints) {
-              const endpointsList = Object.keys(errorData.available_endpoints).join(', ');
-              throw new Error(`Endpoint non trouvé: ${finalEndpoint}\n\nEndpoints disponibles: ${endpointsList}`);
-            }
-          } catch (parseError) {
-            // Si on ne peut pas parser le JSON d'erreur, utiliser un message générique
-          }
+        if (response.status === 404) {
           throw new Error(`Endpoint non trouvé: ${url}`);
         } else {
-          throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`Erreur HTTP ${response.status}`);
         }
       }
 
+      const responseText = await response.text();
+      
       if (!responseText.trim()) {
-        this.lastConnectionError = "Réponse vide du serveur";
         throw new Error('Réponse vide du serveur');
       }
-
-      // Réinitialiser le compteur d'erreurs en cas de succès
-      this.connectionAttempts = 0;
-      this.lastConnectionError = '';
       
-      return this.extractJsonFromResponse(responseText);
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Réponse du serveur invalide');
+      }
 
     } catch (error) {
-      // Stocker l'erreur pour le diagnostic
-      if (error instanceof Error) {
-        this.lastConnectionError = error.message;
-        
-        if (error.message.includes('Timeout après')) {
-          throw new Error(`Timeout de connexion: ${url}`);
-        } else if (error.message.includes('fetch') || error.message.includes('Network')) {
-          throw new Error(`Impossible de se connecter au serveur: ${url}\n\nVérifiez que votre appareil est connecté au même réseau que le serveur.`);
-        }
-      } else {
-        this.lastConnectionError = "Erreur inconnue";
-      }
+      console.error('API request failed:', error);
       throw error;
     }
   }
 
   async testConnection(): Promise<boolean> {
     try {
-      console.log('=== TESTING CONNECTION ===');
+      console.log('=== TESTING CONNECTION v1.4.0 ===');
       console.log('Testing URL:', this.baseUrl);
       
       if (!this.baseUrl) {
@@ -968,7 +631,7 @@ class ApiService {
 
   async registerDevice(): Promise<boolean> {
     try {
-      console.log('=== REGISTERING DEVICE ===');
+      console.log('=== REGISTERING DEVICE v1.4.0 ===');
       console.log('Device ID:', this.deviceId);
       console.log('Server URL:', this.baseUrl);
       console.log('API Type:', this.apiType);
@@ -978,7 +641,7 @@ class ApiService {
         name: `Fire TV Stick - ${this.deviceId.split('_').pop()}`,
         type: 'firetv',
         platform: 'android',
-        user_agent: 'PresentationKiosk/2.0 (Android; FireTV)',
+        user_agent: 'PresentationKiosk/1.4.0 (FireTV)',
         capabilities: [
           'video_playback',
           'image_display',
@@ -1032,14 +695,13 @@ class ApiService {
         return true;
       }
       
-      // Relancer l'erreur pour que l'interface utilisateur puisse l'afficher
       throw error;
     }
   }
 
   async getPresentations(): Promise<Presentation[]> {
     try {
-      console.log('=== FETCHING PRESENTATIONS ===');
+      console.log('=== FETCHING PRESENTATIONS v1.4.0 ===');
       
       if (!this.isRegistered) {
         console.log('Device not registered, attempting registration...');
@@ -1072,7 +734,7 @@ class ApiService {
 
   async getPresentation(id: number): Promise<PresentationDetails> {
     try {
-      console.log('=== FETCHING PRESENTATION DETAILS ===');
+      console.log('=== FETCHING PRESENTATION DETAILS v1.4.0 ===');
       console.log('Presentation ID:', id);
       
       if (!this.isRegistered) {
@@ -1115,23 +777,10 @@ class ApiService {
           }
         }
         
-        if (imageUrl && this.baseUrl) {
-          const baseServerUrl = this.getBaseServerUrl();
-          const imagePath = slide.media_path || slide.image_path || '';
-          
-          if (imagePath) {
-            if (imagePath.includes('uploads/slides/')) {
-              imageUrl = `${baseServerUrl}/${imagePath}`;
-            } else {
-              imageUrl = `${baseServerUrl}/uploads/slides/${imagePath}`;
-            }
-          }
-        }
-        
         // Utiliser la vraie durée de la base de données
         const duration = parseInt(slide.duration?.toString() || '5');
         
-        console.log('=== SLIDE DURATION DEBUG ===');
+        console.log('=== SLIDE DURATION DEBUG v1.4.0 ===');
         console.log('Slide ID:', slide.id);
         console.log('Raw duration from DB:', slide.duration);
         console.log('Parsed duration:', duration);
@@ -1155,8 +804,7 @@ class ApiService {
         console.log(`Slide ${index + 1}:`, {
           id: slide.id,
           name: slide.name,
-          duration: slide.duration,
-          image_url: slide.image_url
+          duration: slide.duration
         });
       });
 
@@ -1193,36 +841,127 @@ class ApiService {
     }
   }
 
+  /**
+   * Obtient l'URL de base du serveur pour les images
+   */
+  private getBaseServerUrl(): string {
+    if (!this.baseUrl) return '';
+    
+    console.log('=== BUILDING BASE SERVER URL ===');
+    console.log('Original baseUrl:', this.baseUrl);
+    
+    // Supprimer /api/index.php ou /index.php de l'URL pour obtenir l'URL de base
+    let baseServerUrl = this.baseUrl;
+    
+    // Si l'URL contient /api/index.php, supprimer cette partie
+    if (baseServerUrl.includes('/api/index.php')) {
+      baseServerUrl = baseServerUrl.replace('/api/index.php', '');
+    }
+    // Sinon si elle contient juste /index.php, supprimer cette partie
+    else if (baseServerUrl.includes('/index.php')) {
+      baseServerUrl = baseServerUrl.replace('/index.php', '');
+    }
+    
+    console.log('Base server URL for images:', baseServerUrl);
+    return baseServerUrl;
+  }
+
   async getDebugInfo(): Promise<{
     serverUrl: string;
     deviceId: string;
     isRegistered: boolean;
     hasToken: boolean;
-    assignmentCheckActive: boolean;
     assignmentCheckEnabled: boolean;
-    defaultCheckActive: boolean;
     defaultCheckEnabled: boolean;
     apiType: string;
-    lastConnectionError: string;
-    connectionAttempts: number;
   }> {
     return {
       serverUrl: this.baseUrl,
       deviceId: this.deviceId,
       isRegistered: this.isRegistered,
       hasToken: !!this.enrollmentToken,
-      assignmentCheckActive: !!this.assignmentCheckInterval,
       assignmentCheckEnabled: this.assignmentCheckEnabled,
-      defaultCheckActive: !!this.defaultCheckInterval,
       defaultCheckEnabled: this.defaultCheckEnabled,
-      apiType: this.apiType,
-      lastConnectionError: this.lastConnectionError,
-      connectionAttempts: this.connectionAttempts
+      apiType: this.apiType
     };
   }
 
+  async setServerUrl(url: string): Promise<boolean> {
+    try {
+      console.log('=== SETTING SERVER URL v1.4.0 ===');
+      console.log('Input URL:', url);
+      
+      // Nettoyer l'URL et s'assurer qu'elle se termine par index.php
+      let cleanUrl = url.replace(/\/+$/, '');
+      
+      // Si l'URL ne se termine pas par index.php, l'ajouter
+      if (!cleanUrl.endsWith('index.php')) {
+        if (!cleanUrl.endsWith('/')) {
+          cleanUrl += '/';
+        }
+        cleanUrl += 'index.php';
+      }
+      
+      console.log('Clean URL:', cleanUrl);
+      
+      this.baseUrl = cleanUrl;
+      await AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, cleanUrl);
+      
+      // Réinitialiser le statut d'enregistrement pour le nouveau serveur
+      this.isRegistered = false;
+      this.enrollmentToken = '';
+      this.assignmentCheckEnabled = false;
+      this.defaultCheckEnabled = false;
+      this.apiType = 'affichageDynamique'; // Par défaut affichageDynamique
+      
+      await AsyncStorage.removeItem(STORAGE_KEYS.DEVICE_REGISTERED);
+      await AsyncStorage.removeItem(STORAGE_KEYS.ENROLLMENT_TOKEN);
+      await AsyncStorage.removeItem(STORAGE_KEYS.ASSIGNED_PRESENTATION);
+      await AsyncStorage.removeItem(STORAGE_KEYS.DEFAULT_PRESENTATION);
+      
+      // Arrêter les anciens checks
+      this.stopAssignmentCheck();
+      this.stopDefaultPresentationCheck();
+      
+      // Détecter le type d'API
+      await this.detectApiType();
+      
+      // Tester la connexion
+      const connectionOk = await this.testConnection();
+      if (connectionOk) {
+        // Enregistrer l'appareil
+        const registrationOk = await this.registerDevice();
+        if (registrationOk) {
+          console.log('=== SERVER SETUP COMPLETE ===');
+          return true;
+        } else {
+          console.warn('Connection OK but registration failed');
+          return true; // On continue même si l'enregistrement échoue
+        }
+      }
+      
+      console.error('Connection test failed');
+      return false;
+    } catch (error) {
+      console.error('Error setting server URL:', error);
+      return false;
+    }
+  }
+
+  getServerUrl(): string {
+    return this.baseUrl;
+  }
+
+  getDeviceId(): string {
+    return this.deviceId;
+  }
+
+  isDeviceRegistered(): boolean {
+    return this.isRegistered;
+  }
+
   async resetDevice(): Promise<void> {
-    console.log('=== RESETTING DEVICE ===');
+    console.log('=== RESETTING DEVICE v1.4.0 ===');
     
     this.stopAssignmentCheck();
     this.stopDefaultPresentationCheck();
@@ -1232,8 +971,6 @@ class ApiService {
     this.assignmentCheckEnabled = false;
     this.defaultCheckEnabled = false;
     this.apiType = 'affichageDynamique';
-    this.lastConnectionError = '';
-    this.connectionAttempts = 0;
     
     await AsyncStorage.removeItem(STORAGE_KEYS.DEVICE_REGISTERED);
     await AsyncStorage.removeItem(STORAGE_KEYS.ENROLLMENT_TOKEN);

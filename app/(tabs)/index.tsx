@@ -7,15 +7,13 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-  Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
-
-const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const [presentations, setPresentations] = useState<Presentation[]>([]);
@@ -28,22 +26,23 @@ export default function HomeScreen() {
 
   useEffect(() => {
     initializeApp();
-    initializeStatusService();
     
     // Démarrer le monitoring périodique toutes les 5 minutes
     const monitoringInterval = setInterval(() => {
-      console.log('=== PERIODIC MONITORING CHECK v1.3.1 ===');
+      console.log('=== PERIODIC MONITORING CHECK v1.4.0 ===');
       periodicMonitoringCheck();
     }, 5 * 60 * 1000); // 5 minutes
     
     return () => {
       clearInterval(monitoringInterval);
+      statusService.stop();
     };
   }, []);
 
   const initializeApp = async () => {
     setLoading(true);
     await apiService.initialize();
+    await statusService.initialize();
     
     const serverUrl = apiService.getServerUrl();
     console.log('Current server URL:', serverUrl);
@@ -58,21 +57,12 @@ export default function HomeScreen() {
     await loadPresentations();
     
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.3.1 ===');
+      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.4.0 ===');
       await startAssignmentMonitoring();
       await startDefaultPresentationMonitoring();
     }
     
     setLoading(false);
-  };
-
-  const initializeStatusService = async () => {
-    try {
-      await statusService.initialize();
-      statusService.updateStatus({ status: 'online' });
-    } catch (error) {
-      console.error('Failed to initialize status service:', error);
-    }
   };
 
   const periodicMonitoringCheck = async () => {
@@ -165,7 +155,7 @@ export default function HomeScreen() {
 
   const startAssignmentMonitoring = async () => {
     try {
-      console.log('=== STARTING ASSIGNMENT MONITORING v1.3.1 ===');
+      console.log('=== STARTING ASSIGNMENT MONITORING v1.4.0 ===');
       
       await apiService.startAssignmentCheck((assigned: AssignedPresentation) => {
         console.log('=== ASSIGNED PRESENTATION DETECTED VIA CALLBACK ===');
@@ -195,7 +185,7 @@ export default function HomeScreen() {
 
   const startDefaultPresentationMonitoring = async () => {
     try {
-      console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.3.1 ===');
+      console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.4.0 ===');
       
       await apiService.startDefaultPresentationCheck((defaultPres: DefaultPresentation) => {
         console.log('=== DEFAULT PRESENTATION DETECTED VIA CALLBACK ===');
@@ -228,10 +218,8 @@ export default function HomeScreen() {
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.3.1 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.4.0 ===');
     console.log('Presentation ID:', assigned.presentation_id);
-    console.log('Auto play:', assigned.auto_play);
-    console.log('Loop mode:', assigned.loop_mode);
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -247,7 +235,7 @@ export default function HomeScreen() {
   };
 
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.3.1 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.4.0 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     
     const params = new URLSearchParams({
@@ -330,7 +318,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.3.1 - Auto-start corrigé • Monitoring 5min • ID: {apiService.getDeviceId()}
+          Version 1.4.0 - Simplifiée • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -492,14 +480,9 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <LinearGradient
-          colors={['#667eea', '#764ba2']}
-          style={styles.loadingGradient}
-        >
-          <RefreshCw size={48} color="#ffffff" />
-          <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.3.1 - Auto-start et monitoring corrigés</Text>
-        </LinearGradient>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Initialisation de l'application...</Text>
+        <Text style={styles.loadingSubtext}>Version 1.4.0 - Simplifiée</Text>
       </View>
     );
   }
@@ -521,7 +504,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.3.1 Auto-start + Monitoring
+                Fire TV Stick - Version 1.4.0 Simplifiée
               </Text>
               
               <TouchableOpacity
@@ -552,7 +535,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Auto-start activé • Monitoring 5min • v1.3.1
+              🔄 Auto-start activé • Monitoring 5min • v1.4.0
             </Text>
           </View>
           
@@ -633,21 +616,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingGradient: {
-    padding: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    margin: 20,
-  },
   loadingText: {
-    color: '#ffffff',
+    color: '#3b82f6',
     fontSize: 18,
     fontWeight: '600',
     marginTop: 16,
     textAlign: 'center',
   },
   loadingSubtext: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#6b7280',
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
@@ -859,6 +836,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+    marginBottom: 16,
   },
   cardGradient: {
     padding: 24,
