@@ -32,15 +32,16 @@ export default function PresentationScreen() {
   const [imageLoadError, setImageLoadError] = useState<{[key: number]: boolean}>({});
   const [loopCount, setLoopCount] = useState(0);
   
-  // Refs pour la gestion du timer SIMPLIFIÉ
+  // Refs pour la gestion du timer ULTRA SIMPLIFIÉ v1.3.3
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const slideStartTimeRef = useRef<number>(0);
   const currentSlideDurationRef = useRef<number>(0);
+  const isTimerActiveRef = useRef<boolean>(false);
 
   // Nettoyage complet des ressources
   const cleanupResources = useCallback(() => {
-    console.log('=== CLEANING UP RESOURCES v1.3.1 ===');
+    console.log('=== CLEANING UP RESOURCES v1.3.3 ===');
     
     // Arrêter le timer principal
     if (timerRef.current) {
@@ -56,10 +57,12 @@ export default function PresentationScreen() {
     
     // Désactiver keep-awake
     deactivateKeepAwake();
+    console.log('=== KEEP-AWAKE DEACTIVATED v1.3.3 ===');
     
     // Réinitialiser les refs
     slideStartTimeRef.current = 0;
     currentSlideDurationRef.current = 0;
+    isTimerActiveRef.current = false;
     
     // Désactiver le mode présentation
     statusService.setPresentationMode(false);
@@ -70,11 +73,11 @@ export default function PresentationScreen() {
     
     // Activer keep-awake pour empêcher la mise en veille
     activateKeepAwake();
-    console.log('=== KEEP-AWAKE ACTIVATED v1.3.1 ===');
+    console.log('=== KEEP-AWAKE ACTIVATED v1.3.3 ===');
     
     // Configurer selon les paramètres
     if (loop_mode === 'true') {
-      console.log('Loop mode enabled');
+      console.log('Loop mode enabled v1.3.3');
       setIsLooping(true);
     }
     
@@ -84,7 +87,7 @@ export default function PresentationScreen() {
   // Démarrage automatique
   useEffect(() => {
     if (presentation && auto_play === 'true') {
-      console.log('=== AUTO-STARTING PRESENTATION v1.3.1 ===');
+      console.log('=== AUTO-STARTING PRESENTATION v1.3.3 ===');
       const startTimer = setTimeout(() => {
         setIsPlaying(true);
         setShowControls(false);
@@ -94,16 +97,16 @@ export default function PresentationScreen() {
     }
   }, [presentation, auto_play]);
 
-  // Gestion du timer COMPLÈTEMENT REFAIT
+  // Gestion du timer ULTRA SIMPLIFIÉ v1.3.3
   useEffect(() => {
-    console.log('=== TIMER EFFECT v1.3.1 ===');
+    console.log('=== TIMER EFFECT v1.3.3 ===');
     console.log('isPlaying:', isPlaying);
     console.log('currentSlideIndex:', currentSlideIndex);
     console.log('presentation slides:', presentation?.slides.length || 0);
 
-    if (isPlaying && presentation && presentation.slides.length > 0) {
+    if (isPlaying && presentation && presentation.slides.length > 0 && !isTimerActiveRef.current) {
       startSlideTimer();
-    } else {
+    } else if (!isPlaying) {
       stopSlideTimer();
     }
 
@@ -111,6 +114,7 @@ export default function PresentationScreen() {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
+        isTimerActiveRef.current = false;
       }
     };
   }, [isPlaying, currentSlideIndex, presentation]);
@@ -157,7 +161,7 @@ export default function PresentationScreen() {
     try {
       setLoading(true);
       setError(null);
-      console.log('=== LOADING PRESENTATION v1.3.1 ===');
+      console.log('=== LOADING PRESENTATION v1.3.3 ===');
       console.log('Presentation ID:', id);
       
       const data = await apiService.getPresentation(Number(id));
@@ -169,7 +173,7 @@ export default function PresentationScreen() {
       }
       
       // Log détaillé des slides avec leurs durées
-      console.log('=== SLIDES DETAILS v1.3.1 ===');
+      console.log('=== SLIDES DETAILS v1.3.3 ===');
       data.slides.forEach((slide, index) => {
         console.log(`Slide ${index + 1}:`, {
           id: slide.id,
@@ -195,10 +199,11 @@ export default function PresentationScreen() {
 
   const stopSlideTimer = useCallback(() => {
     if (timerRef.current) {
-      console.log('=== STOPPING TIMER v1.3.1 ===');
+      console.log('=== STOPPING TIMER v1.3.3 ===');
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+    isTimerActiveRef.current = false;
     slideStartTimeRef.current = 0;
     currentSlideDurationRef.current = 0;
     setTimeRemaining(0);
@@ -206,16 +211,22 @@ export default function PresentationScreen() {
 
   const startSlideTimer = useCallback(() => {
     if (!presentation || presentation.slides.length === 0) {
-      console.log('=== NO PRESENTATION OR SLIDES ===');
+      console.log('=== NO PRESENTATION OR SLIDES v1.3.3 ===');
       return;
     }
 
     // Vérifier que l'index est valide
     if (currentSlideIndex >= presentation.slides.length) {
-      console.error('=== INVALID SLIDE INDEX ===');
+      console.error('=== INVALID SLIDE INDEX v1.3.3 ===');
       console.error('Current index:', currentSlideIndex);
       console.error('Total slides:', presentation.slides.length);
       setCurrentSlideIndex(0);
+      return;
+    }
+
+    // Empêcher les timers multiples
+    if (isTimerActiveRef.current) {
+      console.log('=== TIMER ALREADY ACTIVE v1.3.3 ===');
       return;
     }
 
@@ -223,53 +234,60 @@ export default function PresentationScreen() {
 
     const currentSlide = presentation.slides[currentSlideIndex];
     if (!currentSlide) {
-      console.error('=== CURRENT SLIDE NOT FOUND ===');
+      console.error('=== CURRENT SLIDE NOT FOUND v1.3.3 ===');
       return;
     }
 
     const slideDuration = currentSlide.duration * 1000; // Convertir en millisecondes
     
-    console.log(`=== STARTING TIMER v1.3.1 FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
+    console.log(`=== STARTING TIMER v1.3.3 FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
     console.log(`Slide: ${currentSlide.name}`);
     console.log(`Duration: ${currentSlide.duration}s (${slideDuration}ms)`);
     
+    isTimerActiveRef.current = true;
     slideStartTimeRef.current = Date.now();
     currentSlideDurationRef.current = slideDuration;
     setTimeRemaining(slideDuration);
 
     // Timer simple avec setTimeout au lieu d'interval
     timerRef.current = setTimeout(() => {
-      console.log(`=== TIMER COMPLETED FOR SLIDE ${currentSlideIndex + 1} ===`);
+      console.log(`=== TIMER COMPLETED FOR SLIDE ${currentSlideIndex + 1} v1.3.3 ===`);
+      isTimerActiveRef.current = false;
       nextSlide();
     }, slideDuration);
 
     // Mettre à jour le temps restant toutes les 100ms
     const updateTimeRemaining = () => {
+      if (!isTimerActiveRef.current) return;
+      
       const now = Date.now();
       const elapsed = now - slideStartTimeRef.current;
       const remaining = Math.max(0, currentSlideDurationRef.current - elapsed);
       
       setTimeRemaining(remaining);
       
-      if (remaining > 0 && isPlaying) {
+      if (remaining > 0 && isPlaying && isTimerActiveRef.current) {
         setTimeout(updateTimeRemaining, 100);
       }
     };
     
     updateTimeRemaining();
 
-    console.log('=== TIMER STARTED SUCCESSFULLY v1.3.1 ===');
+    console.log('=== TIMER STARTED SUCCESSFULLY v1.3.3 ===');
   }, [presentation, currentSlideIndex, isPlaying]);
 
   const nextSlide = useCallback(() => {
     if (!presentation || presentation.slides.length === 0) {
-      console.log('=== NO PRESENTATION FOR NEXT ===');
+      console.log('=== NO PRESENTATION FOR NEXT v1.3.3 ===');
       return;
     }
     
-    console.log(`=== NEXT SLIDE LOGIC v1.3.1 ===`);
+    console.log(`=== NEXT SLIDE LOGIC v1.3.3 ===`);
     console.log(`Current: ${currentSlideIndex + 1}/${presentation.slides.length}`);
     console.log(`Is looping: ${isLooping}`);
+    
+    // Arrêter le timer actuel
+    isTimerActiveRef.current = false;
     
     if (currentSlideIndex < presentation.slides.length - 1) {
       const nextIndex = currentSlideIndex + 1;
@@ -302,7 +320,7 @@ export default function PresentationScreen() {
   }, [presentation, currentSlideIndex, isLooping, loopCount]);
 
   const togglePlayPause = useCallback(() => {
-    console.log('=== TOGGLE PLAY/PAUSE v1.3.1 ===');
+    console.log('=== TOGGLE PLAY/PAUSE v1.3.3 ===');
     const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     setShowControls(true);
@@ -328,7 +346,7 @@ export default function PresentationScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
         <Text style={styles.loadingText}>Chargement de la présentation...</Text>
-        <Text style={styles.loadingSubtext}>Version 1.3.1 - Keep-awake activé • Lancement auto corrigé</Text>
+        <Text style={styles.loadingSubtext}>Version 1.3.3 - Keep-awake activé • Package.json fonctionnel</Text>
       </View>
     );
   }
@@ -376,7 +394,7 @@ export default function PresentationScreen() {
   const currentSlide = presentation.slides[safeCurrentSlideIndex];
   
   if (!currentSlide) {
-    console.error('=== CRITICAL ERROR: NO CURRENT SLIDE ===');
+    console.error('=== CRITICAL ERROR: NO CURRENT SLIDE v1.3.3 ===');
     setCurrentSlideIndex(0);
     return (
       <View style={styles.loadingContainer}>
@@ -436,7 +454,7 @@ export default function PresentationScreen() {
         )}
 
         <View style={styles.versionIndicator}>
-          <Text style={styles.versionText}>v1.3.1</Text>
+          <Text style={styles.versionText}>v1.3.3</Text>
         </View>
       </TouchableOpacity>
 
@@ -456,7 +474,7 @@ export default function PresentationScreen() {
               
               <View style={styles.presentationInfo}>
                 <Text style={styles.presentationTitle} numberOfLines={1}>
-                  {presentation.name} {assigned === 'true' && '(Assignée)'} - v1.3.1
+                  {presentation.name} {assigned === 'true' && '(Assignée)'} - v1.3.3
                 </Text>
                 <Text style={styles.slideCounter}>
                   {safeCurrentSlideIndex + 1} / {presentation.slides.length}

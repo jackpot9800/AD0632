@@ -8,7 +8,6 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
-  Platform,
   Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,9 +21,7 @@ import {
   Settings as SettingsIcon, 
   RefreshCw, 
   Trash2, 
-  UserPlus, 
-  Activity, 
-  Zap,
+  
   Power
 } from 'lucide-react-native';
 import { apiService } from '@/services/ApiService';
@@ -129,7 +126,7 @@ export default function SettingsScreen() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'PresentationKiosk/1.3.2 (FireTV)',
+          'User-Agent': 'PresentationKiosk/1.3.3 (FireTV)',
           'Cache-Control': 'no-cache',
         },
       });
@@ -184,7 +181,7 @@ export default function SettingsScreen() {
     setSaving(true);
     
     try {
-      console.log('=== SAVING SETTINGS v1.3.2 ===');
+      console.log('=== SAVING SETTINGS v1.3.3 ===');
       
       const success = await apiService.setServerUrl(serverUrl.trim());
       
@@ -232,7 +229,7 @@ export default function SettingsScreen() {
     setRegistering(true);
     
     try {
-      console.log('=== MANUAL DEVICE REGISTRATION v1.3.2 ===');
+      console.log('=== MANUAL DEVICE REGISTRATION v1.3.3 ===');
       
       if (apiService.isDeviceRegistered()) {
         Alert.alert(
@@ -332,7 +329,7 @@ export default function SettingsScreen() {
             <SettingsIcon size={32} color="#ffffff" />
           </LinearGradient>
           <Text style={styles.title}>Paramètres</Text>
-          <Text style={styles.subtitle}>Version 1.3.2 - Rechargement constant corrigé</Text>
+          <Text style={styles.subtitle}>Version 1.3.3 - Package.json fonctionnel + Keep-awake</Text>
         </View>
 
         <View style={styles.section}>
@@ -406,7 +403,7 @@ export default function SettingsScreen() {
             {registering ? (
               <ActivityIndicator size="small" color="#ffffff" />
             ) : (
-              <UserPlus size={16} color="#ffffff" />
+              <Monitor size={16} color="#ffffff" />
             )}
             <Text style={styles.buttonText}>
               {registering ? 'Enregistrement...' : 'Enregistrer l\'appareil'}
@@ -453,42 +450,6 @@ export default function SettingsScreen() {
             />
           </View>
           
-          <View style={styles.settingRow}>
-            <View style={styles.settingLabelContainer}>
-              <Zap size={20} color={remoteControlEnabled ? "#10b981" : "#6b7280"} />
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Contrôle à distance</Text>
-                <Text style={styles.settingDescription}>
-                  Permettre le contrôle depuis la plateforme web
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={remoteControlEnabled}
-              onValueChange={setRemoteControlEnabled}
-              trackColor={{ false: '#6b7280', true: '#10b981' }}
-              thumbColor={remoteControlEnabled ? '#ffffff' : '#f4f3f4'}
-            />
-          </View>
-          
-          <View style={styles.settingRow}>
-            <View style={styles.settingLabelContainer}>
-              <Activity size={20} color={statusReportingEnabled ? "#10b981" : "#6b7280"} />
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Rapport de statut</Text>
-                <Text style={styles.settingDescription}>
-                  Envoyer le statut au serveur
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={statusReportingEnabled}
-              onValueChange={setStatusReportingEnabled}
-              trackColor={{ false: '#6b7280', true: '#10b981' }}
-              thumbColor={statusReportingEnabled ? '#ffffff' : '#f4f3f4'}
-            />
-          </View>
-          
           <TouchableOpacity
             style={styles.saveAdvancedButton}
             onPress={saveAdvancedSettings}
@@ -508,7 +469,7 @@ export default function SettingsScreen() {
               <Monitor size={20} color="#9ca3af" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Version</Text>
-                <Text style={styles.infoValue}>1.3.2 - Rechargement constant corrigé</Text>
+                <Text style={styles.infoValue}>1.3.3 - Package.json fonctionnel + Keep-awake</Text>
               </View>
             </View>
             
