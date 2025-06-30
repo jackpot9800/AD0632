@@ -65,6 +65,8 @@ export default function PresentationScreen() {
   const lastSlideChangeRef = useRef<number>(0);
   const performanceMonitorRef = useRef<NodeJS.Timeout | null>(null);
   const slideChangeInProgressRef = useRef<boolean>(false);
+  const timerStartTimeRef = useRef<number>(0);
+  const expectedEndTimeRef = useRef<number>(0);
 
   // Nettoyage complet des ressources
   const cleanupResources = useCallback(() => {
@@ -469,6 +471,8 @@ export default function PresentationScreen() {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    timerStartTimeRef.current = 0;
+    expectedEndTimeRef.current = 0;
   }, []);
 
   const startSlideTimer = useCallback(() => {
@@ -504,19 +508,24 @@ export default function PresentationScreen() {
     
     setTimeRemaining(slideDuration);
     lastSlideChangeRef.current = Date.now();
+    
+    // Enregistrer les temps de début et fin attendus
+    timerStartTimeRef.current = Date.now();
+    expectedEndTimeRef.current = timerStartTimeRef.current + slideDuration;
 
     intervalRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const newTime = prev - 100;
-        
-        if (newTime <= 0) {
-          console.log(`=== TIMER FINISHED FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
-          nextSlide();
-          return 0;
-        }
-        
-        return newTime;
-      });
+      const now = Date.now();
+      const elapsed = now - timerStartTimeRef.current;
+      const remaining = Math.max(0, slideDuration - elapsed);
+      
+      setTimeRemaining(remaining);
+      
+      // Vérifier si le timer est terminé avec une marge d'erreur
+      if (remaining <= 100) { // 100ms de marge
+        console.log(`=== TIMER FINISHED FOR SLIDE ${currentSlideIndex + 1}/${presentation.slides.length} ===`);
+        console.log(`Elapsed time: ${elapsed}ms, Expected: ${slideDuration}ms`);
+        nextSlide();
+      }
     }, 100);
 
     console.log('=== TIMER STARTED SUCCESSFULLY ===');
@@ -1210,11 +1219,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  assignedText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   autoPlayIndicator: {
     position: 'absolute',
     top: 70,
@@ -1227,11 +1231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  autoPlayText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   optimizationIndicator: {
     position: 'absolute',
     top: 120,
@@ -1243,11 +1242,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  optimizationText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   controlsOverlay: {
     position: 'absolute',
