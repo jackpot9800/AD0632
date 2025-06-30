@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,22 +24,39 @@ export default function HomeScreen() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing' | 'not_configured'>('testing');
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
-  const [autoLaunchTimer, setAutoLaunchTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  // États pour contrôler les surveillances et éviter les doublons
+  const [assignmentCheckStarted, setAssignmentCheckStarted] = useState(false);
+  const [defaultCheckStarted, setDefaultCheckStarted] = useState(false);
+  const [autoLaunchExecuted, setAutoLaunchExecuted] = useState(false);
+  const [defaultNotificationShown, setDefaultNotificationShown] = useState(false);
+  
+  // Refs pour les timers
+  const autoLaunchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const initializationCompleteRef = useRef(false);
 
   useEffect(() => {
     initializeApp();
     initializeStatusService();
     
-    // Nettoyage du timer au démontage
+    // Nettoyage au démontage
     return () => {
-      if (autoLaunchTimer) {
-        clearTimeout(autoLaunchTimer);
+      if (autoLaunchTimerRef.current) {
+        clearTimeout(autoLaunchTimerRef.current);
       }
+      statusService.stop();
     };
   }, []);
 
   const initializeApp = async () => {
+    if (initializationCompleteRef.current) {
+      console.log('=== INITIALIZATION ALREADY COMPLETE v1.3.2 ===');
+      return;
+    }
+
+    console.log('=== STARTING APP INITIALIZATION v1.3.2 ===');
     setLoading(true);
+    
     await apiService.initialize();
     
     const serverUrl = apiService.getServerUrl();
@@ -48,6 +65,7 @@ export default function HomeScreen() {
     if (!serverUrl) {
       setConnectionStatus('not_configured');
       setLoading(false);
+      initializationCompleteRef.current = true;
       return;
     }
     
@@ -55,12 +73,21 @@ export default function HomeScreen() {
     await loadPresentations();
     
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.3.1 ===');
-      await startAssignmentMonitoring();
-      await startDefaultPresentationMonitoring();
+      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.3.2 ===');
+      
+      // Démarrer les surveillances UNE SEULE FOIS
+      if (!assignmentCheckStarted) {
+        await startAssignmentMonitoring();
+      }
+      
+      if (!defaultCheckStarted) {
+        await startDefaultPresentationMonitoring();
+      }
     }
     
     setLoading(false);
+    initializationCompleteRef.current = true;
+    console.log('=== APP INITIALIZATION COMPLETE v1.3.2 ===');
   };
 
   const initializeStatusService = async () => {
@@ -113,34 +140,45 @@ export default function HomeScreen() {
   };
 
   const startAssignmentMonitoring = async () => {
+    if (assignmentCheckStarted) {
+      console.log('=== ASSIGNMENT CHECK ALREADY STARTED v1.3.2 ===');
+      return;
+    }
+
+    console.log('=== STARTING ASSIGNMENT MONITORING v1.3.2 ===');
+    setAssignmentCheckStarted(true);
+    
     try {
-      console.log('=== STARTING ASSIGNMENT MONITORING v1.3.1 ===');
-      
       await apiService.startAssignmentCheck((assigned: AssignedPresentation) => {
-        console.log('=== ASSIGNED PRESENTATION DETECTED v1.3.1 ===');
+        console.log('=== ASSIGNED PRESENTATION DETECTED v1.3.2 ===');
         setAssignedPresentation(assigned);
         
         // Annuler le timer de présentation par défaut si actif
-        if (autoLaunchTimer) {
-          clearTimeout(autoLaunchTimer);
-          setAutoLaunchTimer(null);
+        if (autoLaunchTimerRef.current) {
+          clearTimeout(autoLaunchTimerRef.current);
+          autoLaunchTimerRef.current = null;
         }
         
-        // Lancement IMMÉDIAT des présentations assignées
-        setTimeout(() => {
-          launchAssignedPresentation(assigned);
-        }, 1000);
+        // Lancement IMMÉDIAT des présentations assignées (UNE SEULE FOIS)
+        if (!autoLaunchExecuted) {
+          setAutoLaunchExecuted(true);
+          setTimeout(() => {
+            launchAssignedPresentation(assigned);
+          }, 1000);
+        }
       });
 
+      // Vérifier s'il y a une assignation existante
       const existing = await apiService.checkForAssignedPresentation();
-      if (existing) {
-        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION v1.3.1 ===');
+      if (existing && !autoLaunchExecuted) {
+        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION v1.3.2 ===');
         setAssignedPresentation(existing);
+        setAutoLaunchExecuted(true);
         
         // Annuler le timer de présentation par défaut si actif
-        if (autoLaunchTimer) {
-          clearTimeout(autoLaunchTimer);
-          setAutoLaunchTimer(null);
+        if (autoLaunchTimerRef.current) {
+          clearTimeout(autoLaunchTimerRef.current);
+          autoLaunchTimerRef.current = null;
         }
         
         setTimeout(() => {
@@ -149,55 +187,60 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.log('Assignment monitoring failed:', error);
+      setAssignmentCheckStarted(false);
     }
   };
 
   const startDefaultPresentationMonitoring = async () => {
+    if (defaultCheckStarted) {
+      console.log('=== DEFAULT CHECK ALREADY STARTED v1.3.2 ===');
+      return;
+    }
+
+    console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.3.2 ===');
+    setDefaultCheckStarted(true);
+    
     try {
-      console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.3.1 ===');
-      
       await apiService.startDefaultPresentationCheck((defaultPres: DefaultPresentation) => {
-        console.log('=== DEFAULT PRESENTATION DETECTED v1.3.1 ===');
+        console.log('=== DEFAULT PRESENTATION DETECTED v1.3.2 ===');
         setDefaultPresentation(defaultPres);
         
-        // Ne lancer automatiquement que s'il n'y a pas de présentation assignée
-        if (!assignedPresentation) {
+        // Ne lancer automatiquement que s'il n'y a pas de présentation assignée ET pas déjà exécuté
+        if (!assignedPresentation && !autoLaunchExecuted && !defaultNotificationShown) {
           scheduleDefaultPresentationLaunch(defaultPres);
         }
       });
 
+      // Vérifier s'il y a une présentation par défaut existante
       const existing = await apiService.checkForDefaultPresentation();
-      if (existing) {
-        console.log('=== FOUND EXISTING DEFAULT PRESENTATION v1.3.1 ===');
+      if (existing && !assignedPresentation && !autoLaunchExecuted && !defaultNotificationShown) {
+        console.log('=== FOUND EXISTING DEFAULT PRESENTATION v1.3.2 ===');
         setDefaultPresentation(existing);
-        
-        // Ne lancer automatiquement que s'il n'y a pas de présentation assignée
-        if (!assignedPresentation) {
-          scheduleDefaultPresentationLaunch(existing);
-        }
+        scheduleDefaultPresentationLaunch(existing);
       }
     } catch (error) {
       console.log('Default presentation monitoring failed:', error);
+      setDefaultCheckStarted(false);
     }
   };
 
   const scheduleDefaultPresentationLaunch = (defaultPres: DefaultPresentation) => {
-    console.log('=== SCHEDULING DEFAULT PRESENTATION LAUNCH v1.3.1 ===');
-    
-    // Annuler le timer précédent s'il existe
-    if (autoLaunchTimer) {
-      clearTimeout(autoLaunchTimer);
+    if (defaultNotificationShown || autoLaunchExecuted) {
+      console.log('=== DEFAULT LAUNCH ALREADY SCHEDULED v1.3.2 ===');
+      return;
     }
+
+    console.log('=== SCHEDULING DEFAULT PRESENTATION LAUNCH v1.3.2 ===');
+    setDefaultNotificationShown(true);
     
     // Programmer le lancement automatique après 10 secondes
-    const timer = setTimeout(() => {
-      console.log('=== AUTO-LAUNCHING DEFAULT PRESENTATION v1.3.1 ===');
+    autoLaunchTimerRef.current = setTimeout(() => {
+      console.log('=== AUTO-LAUNCHING DEFAULT PRESENTATION v1.3.2 ===');
+      setAutoLaunchExecuted(true);
       launchDefaultPresentation(defaultPres);
-    }, 10000); // 10 secondes pour permettre à l'utilisateur de voir l'interface
+    }, 10000);
     
-    setAutoLaunchTimer(timer);
-    
-    // Afficher une notification discrète
+    // Afficher une notification discrète UNE SEULE FOIS
     Alert.alert(
       'Présentation par défaut détectée',
       `"${defaultPres.presentation_name}" va se lancer automatiquement dans 10 secondes.`,
@@ -205,10 +248,11 @@ export default function HomeScreen() {
         { 
           text: 'Lancer maintenant', 
           onPress: () => {
-            if (autoLaunchTimer) {
-              clearTimeout(autoLaunchTimer);
-              setAutoLaunchTimer(null);
+            if (autoLaunchTimerRef.current) {
+              clearTimeout(autoLaunchTimerRef.current);
+              autoLaunchTimerRef.current = null;
             }
+            setAutoLaunchExecuted(true);
             launchDefaultPresentation(defaultPres);
           }
         },
@@ -216,10 +260,11 @@ export default function HomeScreen() {
           text: 'Annuler', 
           style: 'cancel',
           onPress: () => {
-            if (autoLaunchTimer) {
-              clearTimeout(autoLaunchTimer);
-              setAutoLaunchTimer(null);
+            if (autoLaunchTimerRef.current) {
+              clearTimeout(autoLaunchTimerRef.current);
+              autoLaunchTimerRef.current = null;
             }
+            setDefaultNotificationShown(false);
           }
         }
       ]
@@ -227,10 +272,7 @@ export default function HomeScreen() {
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.3.1 ===');
-    console.log('Presentation ID:', assigned.presentation_id);
-    console.log('Auto play:', assigned.auto_play);
-    console.log('Loop mode:', assigned.loop_mode);
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.3.2 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -246,15 +288,7 @@ export default function HomeScreen() {
   };
 
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.3.1 ===');
-    console.log('Presentation ID:', defaultPres.presentation_id);
-    console.log('Presentation name:', defaultPres.presentation_name);
-    
-    // Annuler le timer s'il est encore actif
-    if (autoLaunchTimer) {
-      clearTimeout(autoLaunchTimer);
-      setAutoLaunchTimer(null);
-    }
+    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.3.2 ===');
     
     const params = new URLSearchParams({
       auto_play: 'true',
@@ -269,15 +303,15 @@ export default function HomeScreen() {
   };
 
   const handleManualRefresh = async () => {
+    // Empêcher les refresh multiples
+    if (refreshing) return;
+    
+    console.log('=== MANUAL REFRESH v1.3.2 ===');
     setRefreshing(true);
+    
+    // NE PAS relancer les surveillances lors d'un refresh manuel
     await checkConnection();
     await loadPresentations();
-    
-    // Relancer la surveillance après un refresh
-    if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      await startAssignmentMonitoring();
-      await startDefaultPresentationMonitoring();
-    }
     
     setRefreshing(false);
   };
@@ -288,9 +322,9 @@ export default function HomeScreen() {
 
   const playPresentation = (presentation: Presentation) => {
     // Annuler le timer de présentation par défaut si actif
-    if (autoLaunchTimer) {
-      clearTimeout(autoLaunchTimer);
-      setAutoLaunchTimer(null);
+    if (autoLaunchTimerRef.current) {
+      clearTimeout(autoLaunchTimerRef.current);
+      autoLaunchTimerRef.current = null;
     }
     
     statusService.updatePresentationStatus(
@@ -343,7 +377,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.3.1 - Lancement automatique corrigé • ID: {apiService.getDeviceId()}
+          Version 1.3.2 - Rechargement constant corrigé • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -407,7 +441,14 @@ export default function HomeScreen() {
         <Text style={styles.assignedTitle}>⭐ Présentation par défaut</Text>
         <TouchableOpacity
           style={styles.assignedCard}
-          onPress={() => launchDefaultPresentation(defaultPresentation)}
+          onPress={() => {
+            if (autoLaunchTimerRef.current) {
+              clearTimeout(autoLaunchTimerRef.current);
+              autoLaunchTimerRef.current = null;
+            }
+            setAutoLaunchExecuted(true);
+            launchDefaultPresentation(defaultPresentation);
+          }}
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -433,7 +474,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                ⏱️ Lancement automatique dans 10s
+                {autoLaunchExecuted ? '✅ Prêt à lancer' : '⏱️ Lancement automatique dans 10s'}
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -511,7 +552,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.3.1 - Lancement automatique corrigé</Text>
+          <Text style={styles.loadingSubtext}>Version 1.3.2 - Rechargement constant corrigé</Text>
         </LinearGradient>
       </View>
     );
@@ -534,7 +575,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.3.1 Lancement Auto Corrigé
+                Fire TV Stick - Version 1.3.2 Rechargement Corrigé
               </Text>
               
               <TouchableOpacity
@@ -565,7 +606,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Lecture automatique en boucle • Lancement auto corrigé v1.3.1
+              🔄 Lecture automatique en boucle • Rechargement corrigé v1.3.2
             </Text>
           </View>
           
