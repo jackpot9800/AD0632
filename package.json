@@ -4,8 +4,8 @@
   "version": "1.5.1",
   "private": true,
   "scripts": {
-    "dev": "EXPO_NO_TELEMETRY=1 expo start --tunnel",
-    "start": "expo start --tunnel",
+    "dev": "EXPO_NO_TELEMETRY=1 expo start",
+    "start": "expo start",
     "build:web": "expo export --platform web",
     "build:android": "expo run:android --no-install --no-bundler",
     "build:apk": "cd android && ./gradlew assembleRelease",
@@ -56,5 +56,9 @@
     "@babel/core": "^7.25.2",
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
+  },
+  "overrides": {
+    "metro": "0.80.9",
+    "metro-resolver": "0.80.9"
   }
 }
