@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star } from 'lucide-react-native';
+import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity, Zap } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 
@@ -25,12 +25,18 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // SOLUTION DÉFINITIVE v2.1.0 - Surveillance ultra-robuste avec correction des onglets
+  // RÉTABLISSEMENT v2.2.0 - Surveillance active avec monitoring visible
   const surveillanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoLaunchAttemptedRef = useRef<Set<number>>(new Set());
   const isAppActiveRef = useRef(true);
   const lastCheckTimeRef = useRef<number>(0);
   const forceCheckRef = useRef<boolean>(false);
+  
+  // NOUVEAU v2.2.0 - États de surveillance visibles
+  const [surveillanceActive, setSurveillanceActive] = useState(false);
+  const [lastSurveillanceCheck, setLastSurveillanceCheck] = useState<Date | null>(null);
+  const [surveillanceMessage, setSurveillanceMessage] = useState<string>('Initialisation...');
+  const [autoLaunchStatus, setAutoLaunchStatus] = useState<string>('En attente...');
 
   useEffect(() => {
     initializeApp();
@@ -45,8 +51,9 @@ export default function HomeScreen() {
   }, []);
 
   const initializeApp = async () => {
-    console.log('=== STARTING APP INITIALIZATION v2.1.0 DÉFINITIVE ===');
+    console.log('=== STARTING APP INITIALIZATION v2.2.0 RÉTABLISSEMENT ===');
     setLoading(true);
+    setSurveillanceMessage('Initialisation de l\'application...');
     
     await apiService.initialize();
     
@@ -55,6 +62,7 @@ export default function HomeScreen() {
     
     if (!serverUrl) {
       setConnectionStatus('not_configured');
+      setSurveillanceMessage('Serveur non configuré');
       setLoading(false);
       return;
     }
@@ -62,13 +70,13 @@ export default function HomeScreen() {
     await checkConnection();
     await loadPresentations();
     
-    // DÉMARRER LA SURVEILLANCE ULTRA-ROBUSTE v2.1.0
+    // DÉMARRER LA SURVEILLANCE ACTIVE AVEC MONITORING v2.2.0
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startUltraRobustSurveillance();
+      startActiveSurveillanceWithMonitoring();
     }
     
     setLoading(false);
-    console.log('=== APP INITIALIZATION COMPLETE v2.1.0 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v2.2.0 ===');
   };
 
   const initializeStatusService = async () => {
@@ -84,16 +92,20 @@ export default function HomeScreen() {
     const serverUrl = apiService.getServerUrl();
     if (!serverUrl) {
       setConnectionStatus('not_configured');
+      setSurveillanceMessage('Serveur non configuré');
       return;
     }
     
     setConnectionStatus('testing');
+    setSurveillanceMessage('Test de connexion...');
     try {
       const isConnected = await apiService.testConnection();
       setConnectionStatus(isConnected ? 'connected' : 'disconnected');
+      setSurveillanceMessage(isConnected ? 'Connexion établie' : 'Connexion échouée');
     } catch (error) {
       console.error('Connection test error:', error);
       setConnectionStatus('disconnected');
+      setSurveillanceMessage('Erreur de connexion');
     }
   };
 
@@ -101,14 +113,18 @@ export default function HomeScreen() {
     const serverUrl = apiService.getServerUrl();
     if (!serverUrl) {
       setConnectionStatus('not_configured');
+      setSurveillanceMessage('Serveur non configuré');
       return;
     }
     
     try {
+      setSurveillanceMessage('Chargement des présentations...');
       const data = await apiService.getPresentations();
       setPresentations(data);
+      setSurveillanceMessage('Présentations chargées');
     } catch (error) {
       console.error('Error loading presentations:', error);
+      setSurveillanceMessage('Erreur de chargement');
       Alert.alert(
         'Erreur de connexion',
         `Impossible de charger les présentations`,
@@ -120,49 +136,58 @@ export default function HomeScreen() {
     }
   };
 
-  // SOLUTION DÉFINITIVE v2.1.0 : Surveillance ultra-robuste toutes les 2 secondes
-  const startUltraRobustSurveillance = () => {
-    console.log('=== STARTING ULTRA-ROBUST SURVEILLANCE v2.1.0 ===');
+  // RÉTABLISSEMENT v2.2.0 : Surveillance active avec monitoring visible
+  const startActiveSurveillanceWithMonitoring = () => {
+    console.log('=== STARTING ACTIVE SURVEILLANCE WITH MONITORING v2.2.0 ===');
+    
+    setSurveillanceActive(true);
+    setSurveillanceMessage('🔄 Surveillance active - Recherche de présentations...');
     
     // Vérification immédiate
-    performUltraRobustCheck();
+    performMonitoredCheck();
     
-    // Surveillance continue toutes les 2 secondes pour une réactivité maximale
+    // Surveillance continue toutes les 3 secondes avec monitoring visible
     if (surveillanceIntervalRef.current) {
       clearInterval(surveillanceIntervalRef.current);
     }
     
     surveillanceIntervalRef.current = setInterval(() => {
       if (isAppActiveRef.current) {
-        performUltraRobustCheck();
+        performMonitoredCheck();
       }
-    }, 2000); // Toutes les 2 secondes pour une réactivité maximale
+    }, 3000); // Toutes les 3 secondes avec monitoring
     
-    console.log('✅ Ultra-robust surveillance started (2s interval)');
+    console.log('✅ Active surveillance with monitoring started (3s interval)');
   };
 
-  // FONCTION PRINCIPALE v2.1.0 : Vérification et lancement ultra-robuste
-  const performUltraRobustCheck = async () => {
+  // FONCTION PRINCIPALE v2.2.0 : Vérification avec monitoring visible
+  const performMonitoredCheck = async () => {
     try {
       const now = Date.now();
       
       // Permettre les vérifications forcées ou respecter l'intervalle minimum
-      if (!forceCheckRef.current && (now - lastCheckTimeRef.current < 1500)) {
+      if (!forceCheckRef.current && (now - lastCheckTimeRef.current < 2500)) {
         return;
       }
       lastCheckTimeRef.current = now;
       forceCheckRef.current = false;
       
-      console.log('=== ULTRA-ROBUST CHECK v2.1.0 ===');
+      setLastSurveillanceCheck(new Date());
+      setSurveillanceMessage('🔍 Vérification en cours...');
+      
+      console.log('=== MONITORED CHECK v2.2.0 ===');
       
       // 1. Vérifier les assignations (priorité absolue)
+      setSurveillanceMessage('🔍 Recherche de présentations assignées...');
       const assigned = await apiService.checkForAssignedPresentation();
       if (assigned) {
         console.log('✅ ASSIGNED PRESENTATION FOUND:', assigned.presentation_id);
         setAssignedPresentation(assigned);
+        setSurveillanceMessage('📌 Présentation assignée trouvée !');
+        setAutoLaunchStatus('🚀 Lancement de la présentation assignée...');
         
         if (!autoLaunchAttemptedRef.current.has(assigned.presentation_id)) {
-          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION v2.1.0');
+          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION v2.2.0');
           autoLaunchAttemptedRef.current.add(assigned.presentation_id);
           launchAssignedPresentation(assigned);
         }
@@ -170,8 +195,9 @@ export default function HomeScreen() {
       }
       
       // 2. Vérifier la présentation par défaut avec validation stricte
+      setSurveillanceMessage('🔍 Recherche de présentation par défaut...');
       const defaultPres = await apiService.checkForDefaultPresentation();
-      console.log('=== DEFAULT PRESENTATION CHECK RESULT v2.1.0 ===');
+      console.log('=== DEFAULT PRESENTATION CHECK RESULT v2.2.0 ===');
       console.log('Default presentation data:', defaultPres);
       
       if (defaultPres && 
@@ -180,30 +206,29 @@ export default function HomeScreen() {
           defaultPres.presentation_name && 
           defaultPres.presentation_name.trim() !== '') {
         
-        console.log('✅ VALID DEFAULT PRESENTATION FOUND v2.1.0:', {
+        console.log('✅ VALID DEFAULT PRESENTATION FOUND v2.2.0:', {
           id: defaultPres.presentation_id,
           name: defaultPres.presentation_name
         });
         
         setDefaultPresentation(defaultPres);
+        setSurveillanceMessage('⭐ Présentation par défaut trouvée !');
+        setAutoLaunchStatus(`🔄 Lancement automatique: ${defaultPres.presentation_name}`);
         
-        // LANCEMENT AUTOMATIQUE GARANTI v2.1.0
+        // LANCEMENT AUTOMATIQUE GARANTI v2.2.0
         if (!autoLaunchAttemptedRef.current.has(defaultPres.presentation_id)) {
-          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.1.0');
+          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.2.0');
           autoLaunchAttemptedRef.current.add(defaultPres.presentation_id);
+          setAutoLaunchStatus('🚀 Démarrage en boucle infinie...');
           launchDefaultPresentationInfiniteLoop(defaultPres);
         } else {
-          console.log('⚠️ Default presentation already attempted, skipping to avoid loops');
+          setSurveillanceMessage('⚠️ Présentation déjà lancée, surveillance continue...');
+          setAutoLaunchStatus('✅ Présentation en cours de diffusion');
         }
       } else {
-        console.log('❌ No valid default presentation found v2.1.0');
-        console.log('Validation details:', {
-          hasDefaultPres: !!defaultPres,
-          hasId: !!(defaultPres?.presentation_id),
-          idGreaterThanZero: (defaultPres?.presentation_id || 0) > 0,
-          hasName: !!(defaultPres?.presentation_name),
-          nameNotEmpty: !!(defaultPres?.presentation_name?.trim())
-        });
+        console.log('❌ No valid default presentation found v2.2.0');
+        setSurveillanceMessage('❌ Aucune présentation par défaut valide');
+        setAutoLaunchStatus('⏳ En attente d\'une présentation...');
         setDefaultPresentation(null);
         
         // Réinitialiser les tentatives si aucune présentation par défaut valide
@@ -213,12 +238,14 @@ export default function HomeScreen() {
       }
       
     } catch (error) {
-      console.error('Error in ultra-robust check:', error);
+      console.error('Error in monitored check:', error);
+      setSurveillanceMessage('❌ Erreur lors de la vérification');
+      setAutoLaunchStatus('❌ Erreur de surveillance');
     }
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.1.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.2.0 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -233,9 +260,9 @@ export default function HomeScreen() {
     router.push(url);
   };
 
-  // LANCEMENT EN BOUCLE INFINIE GARANTI v2.1.0
+  // LANCEMENT EN BOUCLE INFINIE GARANTI v2.2.0
   const launchDefaultPresentationInfiniteLoop = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.1.0 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.2.0 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
@@ -247,15 +274,17 @@ export default function HomeScreen() {
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('🔄 Navigating to default presentation with INFINITE LOOP v2.1.0:', url);
+    console.log('🔄 Navigating to default presentation with INFINITE LOOP v2.2.0:', url);
     router.push(url);
   };
 
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v2.1.0 ===');
+    console.log('=== MANUAL REFRESH v2.2.0 ===');
     setRefreshing(true);
+    setSurveillanceMessage('🔄 Actualisation manuelle...');
+    setAutoLaunchStatus('🔄 Réinitialisation...');
     
     // RÉINITIALISER complètement les tentatives de lancement
     autoLaunchAttemptedRef.current.clear();
@@ -267,7 +296,7 @@ export default function HomeScreen() {
     
     // RELANCER la surveillance après le refresh
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startUltraRobustSurveillance();
+      startActiveSurveillanceWithMonitoring();
     }
     
     setRefreshing(false);
@@ -331,9 +360,45 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 2.1.0 - SOLUTION DÉFINITIVE • Surveillance 2s • ID: {apiService.getDeviceId()}
+          Version 2.2.0 - RÉTABLISSEMENT • Surveillance 3s • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
+    );
+  };
+
+  // NOUVEAU v2.2.0 - Panneau de surveillance visible
+  const renderSurveillancePanel = () => {
+    if (!surveillanceActive) return null;
+
+    return (
+      <View style={styles.surveillancePanel}>
+        <LinearGradient
+          colors={['#10b981', '#059669']}
+          style={styles.surveillanceGradient}
+        >
+          <View style={styles.surveillanceHeader}>
+            <Activity size={20} color="#ffffff" />
+            <Text style={styles.surveillanceTitle}>Surveillance Active</Text>
+            <Zap size={16} color="#ffffff" />
+          </View>
+          
+          <View style={styles.surveillanceContent}>
+            <Text style={styles.surveillanceMessage}>{surveillanceMessage}</Text>
+            <Text style={styles.autoLaunchStatus}>{autoLaunchStatus}</Text>
+            
+            {lastSurveillanceCheck && (
+              <Text style={styles.lastCheckTime}>
+                Dernière vérification: {lastSurveillanceCheck.toLocaleTimeString()}
+              </Text>
+            )}
+          </View>
+          
+          <View style={styles.surveillanceIndicator}>
+            <View style={styles.pulsingDot} />
+            <Text style={styles.surveillanceFrequency}>Vérification toutes les 3 secondes</Text>
+          </View>
+        </LinearGradient>
+      </View>
     );
   };
 
@@ -375,7 +440,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🚀 Surveillance 2s - Lancement automatique v2.1.0
+                🚀 Surveillance 3s - Lancement automatique v2.2.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -423,7 +488,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🔄 BOUCLE INFINIE - Surveillance 2s v2.1.0
+                🔄 BOUCLE INFINIE - Surveillance 3s v2.2.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -501,7 +566,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 2.1.0 - SOLUTION DÉFINITIVE</Text>
+          <Text style={styles.loadingSubtext}>Version 2.2.0 - RÉTABLISSEMENT</Text>
         </LinearGradient>
       </View>
     );
@@ -524,7 +589,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 2.1.0 SOLUTION DÉFINITIVE
+                Fire TV Stick - Version 2.2.0 RÉTABLISSEMENT
               </Text>
               
               <TouchableOpacity
@@ -546,6 +611,7 @@ export default function HomeScreen() {
         </LinearGradient>
 
         {renderConnectionStatus()}
+        {renderSurveillancePanel()}
         {renderAssignedPresentation()}
         {renderDefaultPresentation()}
 
@@ -555,7 +621,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Surveillance ultra-robuste 2s • SOLUTION DÉFINITIVE v2.1.0
+              🔄 Surveillance active 3s • RÉTABLISSEMENT v2.2.0
             </Text>
           </View>
           
@@ -736,6 +802,73 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontFamily: 'monospace',
     marginTop: 4,
+  },
+  // NOUVEAU v2.2.0 - Styles pour le panneau de surveillance
+  surveillancePanel: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  surveillanceGradient: {
+    padding: 20,
+  },
+  surveillanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  surveillanceTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  surveillanceContent: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  surveillanceMessage: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  autoLaunchStatus: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  lastCheckTime: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  surveillanceIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
+    opacity: 0.8,
+  },
+  surveillanceFrequency: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    fontWeight: '500',
   },
   assignedSection: {
     paddingHorizontal: 20,
