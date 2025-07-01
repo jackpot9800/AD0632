@@ -28,7 +28,7 @@ export default function PresentationsScreen() {
       setLoading(true);
       setError(null);
       
-      console.log('=== LOADING PRESENTATIONS ===');
+      console.log('=== LOADING PRESENTATIONS v2.3.0 ===');
       console.log('Server URL:', apiService.getServerUrl());
       
       const data = await apiService.getPresentations();
@@ -46,7 +46,7 @@ export default function PresentationsScreen() {
         'Erreur de connexion',
         `Impossible de charger les présentations:\n\n${errorMessage}`,
         [
-          { text: 'Paramètres', onPress: () => router.push('/settings') },
+          { text: 'Paramètres', onPress: () => router.push('/(tabs)/settings') },
           { text: 'Réessayer', onPress: loadPresentations },
         ]
       );
@@ -63,55 +63,71 @@ export default function PresentationsScreen() {
 
   const playPresentation = (presentation: Presentation) => {
     console.log('Playing presentation:', presentation.id, presentation.name);
-    router.push(`/presentation/${presentation.id}`);
+    const params = new URLSearchParams({
+      auto_play: 'true',
+      loop_mode: 'true',
+      assigned: 'false'
+    });
+    
+    const url = `/presentation/${presentation.id}?${params.toString()}`;
+    router.push(url);
   };
 
-  const renderPresentationItem = ({ item }: { item: Presentation }) => (
-    <TouchableOpacity
-      style={styles.presentationItem}
-      onPress={() => playPresentation(item)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.itemContent}>
-        <View style={styles.iconContainer}>
-          <LinearGradient
-            colors={['#4f46e5', '#7c3aed']}
-            style={styles.iconGradient}
-          >
-            <Monitor size={24} color="#ffffff" />
-          </LinearGradient>
-        </View>
+  const renderPresentationItem = ({ item, index }: { item: Presentation; index: number }) => {
+    const gradientColors = [
+      ['#667eea', '#764ba2'],
+      ['#f093fb', '#f5576c'],
+      ['#4facfe', '#00f2fe'],
+      ['#43e97b', '#38f9d7'],
+      ['#fa709a', '#fee140'],
+      ['#a8edea', '#fed6e3']
+    ];
+    
+    const colors = gradientColors[index % gradientColors.length];
 
-        <View style={styles.itemDetails}>
-          <Text style={styles.itemTitle} numberOfLines={2}>
-            {item.name}
-          </Text>
-          <Text style={styles.itemDescription} numberOfLines={2}>
-            {item.description || 'Aucune description disponible'}
-          </Text>
-          
-          <View style={styles.itemMeta}>
-            <View style={styles.metaItem}>
-              <Monitor size={14} color="#9ca3af" />
-              <Text style={styles.metaText}>
-                {item.slide_count} slide{item.slide_count > 1 ? 's' : ''}
-              </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Clock size={14} color="#9ca3af" />
-              <Text style={styles.metaText}>
-                {new Date(item.created_at).toLocaleDateString('fr-FR')}
-              </Text>
+    return (
+      <TouchableOpacity
+        style={styles.presentationItem}
+        onPress={() => playPresentation(item)}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={colors}
+          style={styles.itemGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.itemHeader}>
+            <Monitor size={28} color="#ffffff" />
+            <View style={styles.slideCountBadge}>
+              <Text style={styles.slideCountText}>{item.slide_count}</Text>
             </View>
           </View>
-        </View>
+          
+          <View style={styles.itemContent}>
+            <Text style={styles.itemTitle} numberOfLines={2}>
+              {item.name || item.nom}
+            </Text>
+            <Text style={styles.itemDescription} numberOfLines={3}>
+              {item.description || 'Aucune description disponible'}
+            </Text>
+          </View>
 
-        <View style={styles.playIconContainer}>
-          <Play size={20} color="#3b82f6" fill="#3b82f6" />
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+          <View style={styles.itemFooter}>
+            <View style={styles.itemMeta}>
+              <Clock size={14} color="rgba(255, 255, 255, 0.8)" />
+              <Text style={styles.metaText}>
+                {new Date(item.created_at || item.date_creation || '').toLocaleDateString('fr-FR')}
+              </Text>
+            </View>
+            <View style={styles.playButton}>
+              <Play size={18} color="#ffffff" fill="#ffffff" />
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -124,8 +140,9 @@ export default function PresentationsScreen() {
           </Text>
           <TouchableOpacity
             style={styles.configButton}
-            onPress={() => router.push('/settings')}
+            onPress={() => router.push('/(tabs)/settings')}
           >
+            <Settings size={20} color="#ffffff" />
             <Text style={styles.configButtonText}>Configurer</Text>
           </TouchableOpacity>
         </>
@@ -140,6 +157,7 @@ export default function PresentationsScreen() {
             style={styles.configButton}
             onPress={loadPresentations}
           >
+            <RefreshCw size={20} color="#ffffff" />
             <Text style={styles.configButtonText}>Réessayer</Text>
           </TouchableOpacity>
         </>
@@ -158,18 +176,24 @@ export default function PresentationsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Présentations</Text>
-        <Text style={styles.subtitle}>
-          {error ? 'Erreur de chargement' : 
-           `${presentations.length} présentation${presentations.length > 1 ? 's' : ''} disponible${presentations.length > 1 ? 's' : ''}`}
-        </Text>
-        {apiService.getServerUrl() && (
-          <Text style={styles.serverInfo}>
-            Serveur: {apiService.getServerUrl()}
+      <LinearGradient
+        colors={['#4f46e5', '#7c3aed']}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <Monitor size={32} color="#ffffff" />
+          <Text style={styles.title}>Présentations</Text>
+          <Text style={styles.subtitle}>
+            {error ? 'Erreur de chargement' : 
+             `${presentations.length} présentation${presentations.length > 1 ? 's' : ''} disponible${presentations.length > 1 ? 's' : ''}`}
           </Text>
-        )}
-      </View>
+          {apiService.getServerUrl() && (
+            <Text style={styles.serverInfo}>
+              Serveur: {apiService.getServerUrl()}
+            </Text>
+          )}
+        </View>
+      </LinearGradient>
 
       <FlatList
         data={presentations}
@@ -185,6 +209,7 @@ export default function PresentationsScreen() {
         }
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        numColumns={1}
       />
     </View>
   );
@@ -193,86 +218,102 @@ export default function PresentationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#f8fafc',
+  },
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
   },
   header: {
-    padding: 20,
-    paddingBottom: 16,
+    alignItems: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 4,
+    marginTop: 12,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#9ca3af',
-    marginBottom: 4,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   serverInfo: {
     fontSize: 12,
-    color: '#6b7280',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontFamily: 'monospace',
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    padding: 20,
   },
   presentationItem: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 16,
+    borderRadius: 20,
     overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  itemGradient: {
+    padding: 24,
+    minHeight: 180,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  slideCountBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  slideCountText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   itemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  iconContainer: {
-    marginRight: 16,
-  },
-  iconGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  itemDetails: {
     flex: 1,
-    marginRight: 12,
+    marginBottom: 16,
   },
   itemTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 4,
+    marginBottom: 8,
+    lineHeight: 26,
   },
   itemDescription: {
     fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 8,
-    lineHeight: 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 20,
+  },
+  itemFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   itemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
+    gap: 6,
   },
   metaText: {
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 12,
-    color: '#9ca3af',
-    marginLeft: 4,
+    fontWeight: '500',
   },
-  playIconContainer: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 20,
+  playButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 25,
     width: 40,
     height: 40,
     justifyContent: 'center',
@@ -287,23 +328,26 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#1e293b',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyMessage: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#6b7280',
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,
   },
   configButton: {
     backgroundColor: '#3b82f6',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 24,
     paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginTop: 8,
   },
   configButtonText: {

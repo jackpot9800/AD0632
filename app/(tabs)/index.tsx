@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity, Zap } from 'lucide-react-native';
+import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity, Zap, Home } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 
@@ -25,14 +25,14 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // RÉTABLISSEMENT v2.2.0 - Surveillance active avec monitoring visible
+  // RÉTABLISSEMENT v2.3.0 - Surveillance active avec monitoring visible
   const surveillanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoLaunchAttemptedRef = useRef<Set<number>>(new Set());
   const isAppActiveRef = useRef(true);
   const lastCheckTimeRef = useRef<number>(0);
   const forceCheckRef = useRef<boolean>(false);
   
-  // NOUVEAU v2.2.0 - États de surveillance visibles
+  // NOUVEAU v2.3.0 - États de surveillance visibles
   const [surveillanceActive, setSurveillanceActive] = useState(false);
   const [lastSurveillanceCheck, setLastSurveillanceCheck] = useState<Date | null>(null);
   const [surveillanceMessage, setSurveillanceMessage] = useState<string>('Initialisation...');
@@ -51,7 +51,7 @@ export default function HomeScreen() {
   }, []);
 
   const initializeApp = async () => {
-    console.log('=== STARTING APP INITIALIZATION v2.2.0 RÉTABLISSEMENT ===');
+    console.log('=== STARTING APP INITIALIZATION v2.3.0 ACCUEIL RÉTABLI ===');
     setLoading(true);
     setSurveillanceMessage('Initialisation de l\'application...');
     
@@ -70,13 +70,13 @@ export default function HomeScreen() {
     await checkConnection();
     await loadPresentations();
     
-    // DÉMARRER LA SURVEILLANCE ACTIVE AVEC MONITORING v2.2.0
+    // DÉMARRER LA SURVEILLANCE ACTIVE AVEC MONITORING v2.3.0
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
       startActiveSurveillanceWithMonitoring();
     }
     
     setLoading(false);
-    console.log('=== APP INITIALIZATION COMPLETE v2.2.0 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v2.3.0 ===');
   };
 
   const initializeStatusService = async () => {
@@ -136,9 +136,9 @@ export default function HomeScreen() {
     }
   };
 
-  // RÉTABLISSEMENT v2.2.0 : Surveillance active avec monitoring visible
+  // RÉTABLISSEMENT v2.3.0 : Surveillance active avec monitoring visible
   const startActiveSurveillanceWithMonitoring = () => {
-    console.log('=== STARTING ACTIVE SURVEILLANCE WITH MONITORING v2.2.0 ===');
+    console.log('=== STARTING ACTIVE SURVEILLANCE WITH MONITORING v2.3.0 ===');
     
     setSurveillanceActive(true);
     setSurveillanceMessage('🔄 Surveillance active - Recherche de présentations...');
@@ -160,7 +160,7 @@ export default function HomeScreen() {
     console.log('✅ Active surveillance with monitoring started (3s interval)');
   };
 
-  // FONCTION PRINCIPALE v2.2.0 : Vérification avec monitoring visible
+  // FONCTION PRINCIPALE v2.3.0 : Vérification avec monitoring visible
   const performMonitoredCheck = async () => {
     try {
       const now = Date.now();
@@ -175,7 +175,7 @@ export default function HomeScreen() {
       setLastSurveillanceCheck(new Date());
       setSurveillanceMessage('🔍 Vérification en cours...');
       
-      console.log('=== MONITORED CHECK v2.2.0 ===');
+      console.log('=== MONITORED CHECK v2.3.0 ===');
       
       // 1. Vérifier les assignations (priorité absolue)
       setSurveillanceMessage('🔍 Recherche de présentations assignées...');
@@ -187,37 +187,40 @@ export default function HomeScreen() {
         setAutoLaunchStatus('🚀 Lancement de la présentation assignée...');
         
         if (!autoLaunchAttemptedRef.current.has(assigned.presentation_id)) {
-          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION v2.2.0');
+          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION v2.3.0');
           autoLaunchAttemptedRef.current.add(assigned.presentation_id);
           launchAssignedPresentation(assigned);
         }
         return; // Priorité aux assignations
       }
       
-      // 2. Vérifier la présentation par défaut avec validation stricte
+      // 2. Vérifier la présentation par défaut avec validation stricte RENFORCÉE
       setSurveillanceMessage('🔍 Recherche de présentation par défaut...');
       const defaultPres = await apiService.checkForDefaultPresentation();
-      console.log('=== DEFAULT PRESENTATION CHECK RESULT v2.2.0 ===');
+      console.log('=== DEFAULT PRESENTATION CHECK RESULT v2.3.0 ===');
       console.log('Default presentation data:', defaultPres);
       
+      // VALIDATION STRICTE RENFORCÉE v2.3.0
       if (defaultPres && 
           defaultPres.presentation_id && 
           defaultPres.presentation_id > 0 && 
           defaultPres.presentation_name && 
-          defaultPres.presentation_name.trim() !== '') {
+          defaultPres.presentation_name.trim() !== '' &&
+          defaultPres.presentation_name.trim().length > 0) {
         
-        console.log('✅ VALID DEFAULT PRESENTATION FOUND v2.2.0:', {
+        console.log('✅ VALID DEFAULT PRESENTATION FOUND v2.3.0:', {
           id: defaultPres.presentation_id,
-          name: defaultPres.presentation_name
+          name: defaultPres.presentation_name,
+          nameLength: defaultPres.presentation_name.trim().length
         });
         
         setDefaultPresentation(defaultPres);
         setSurveillanceMessage('⭐ Présentation par défaut trouvée !');
         setAutoLaunchStatus(`🔄 Lancement automatique: ${defaultPres.presentation_name}`);
         
-        // LANCEMENT AUTOMATIQUE GARANTI v2.2.0
+        // LANCEMENT AUTOMATIQUE GARANTI v2.3.0
         if (!autoLaunchAttemptedRef.current.has(defaultPres.presentation_id)) {
-          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.2.0');
+          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.3.0');
           autoLaunchAttemptedRef.current.add(defaultPres.presentation_id);
           setAutoLaunchStatus('🚀 Démarrage en boucle infinie...');
           launchDefaultPresentationInfiniteLoop(defaultPres);
@@ -226,7 +229,16 @@ export default function HomeScreen() {
           setAutoLaunchStatus('✅ Présentation en cours de diffusion');
         }
       } else {
-        console.log('❌ No valid default presentation found v2.2.0');
+        console.log('❌ No valid default presentation found v2.3.0');
+        console.log('Validation details:', {
+          hasDefaultPres: !!defaultPres,
+          hasId: !!(defaultPres?.presentation_id),
+          idGreaterThanZero: (defaultPres?.presentation_id || 0) > 0,
+          hasName: !!(defaultPres?.presentation_name),
+          nameNotEmpty: !!(defaultPres?.presentation_name?.trim()),
+          nameLength: defaultPres?.presentation_name?.trim()?.length || 0
+        });
+        
         setSurveillanceMessage('❌ Aucune présentation par défaut valide');
         setAutoLaunchStatus('⏳ En attente d\'une présentation...');
         setDefaultPresentation(null);
@@ -245,7 +257,7 @@ export default function HomeScreen() {
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.2.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.3.0 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -260,9 +272,9 @@ export default function HomeScreen() {
     router.push(url);
   };
 
-  // LANCEMENT EN BOUCLE INFINIE GARANTI v2.2.0
+  // LANCEMENT EN BOUCLE INFINIE GARANTI v2.3.0
   const launchDefaultPresentationInfiniteLoop = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.2.0 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.3.0 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
@@ -274,14 +286,14 @@ export default function HomeScreen() {
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('🔄 Navigating to default presentation with INFINITE LOOP v2.2.0:', url);
+    console.log('🔄 Navigating to default presentation with INFINITE LOOP v2.3.0:', url);
     router.push(url);
   };
 
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v2.2.0 ===');
+    console.log('=== MANUAL REFRESH v2.3.0 ===');
     setRefreshing(true);
     setSurveillanceMessage('🔄 Actualisation manuelle...');
     setAutoLaunchStatus('🔄 Réinitialisation...');
@@ -333,6 +345,10 @@ export default function HomeScreen() {
     router.push('/(tabs)/settings');
   };
 
+  const goToPresentations = () => {
+    router.push('/(tabs)/presentations');
+  };
+
   const renderConnectionStatus = () => {
     const statusConfig = {
       connected: { color: '#10b981', text: 'Connecté au serveur', icon: Wifi },
@@ -360,13 +376,13 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 2.2.0 - RÉTABLISSEMENT • Surveillance 3s • ID: {apiService.getDeviceId()}
+          Version 2.3.0 - ACCUEIL RÉTABLI • Surveillance 3s • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  // NOUVEAU v2.2.0 - Panneau de surveillance visible
+  // NOUVEAU v2.3.0 - Panneau de surveillance visible
   const renderSurveillancePanel = () => {
     if (!surveillanceActive) return null;
 
@@ -440,7 +456,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🚀 Surveillance 3s - Lancement automatique v2.2.0
+                🚀 Surveillance 3s - Lancement automatique v2.3.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -488,7 +504,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🔄 BOUCLE INFINIE - Surveillance 3s v2.2.0
+                🔄 BOUCLE INFINIE - Surveillance 3s v2.3.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -500,60 +516,45 @@ export default function HomeScreen() {
     );
   };
 
-  const renderPresentationCard = (presentation: Presentation, index: number) => {
-    const gradientColors = [
-      ['#667eea', '#764ba2'],
-      ['#f093fb', '#f5576c'],
-      ['#4facfe', '#00f2fe'],
-      ['#43e97b', '#38f9d7']
-    ];
-    
-    const colors = gradientColors[index % gradientColors.length];
-
+  const renderQuickActions = () => {
     return (
-      <TouchableOpacity
-        key={presentation.id}
-        style={styles.presentationCard}
-        onPress={() => playPresentation(presentation)}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={colors}
-          style={styles.cardGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.cardHeader}>
-            <Monitor size={28} color="#ffffff" />
-            <View style={styles.slideCountBadge}>
-              <Text style={styles.slideCountText}>{presentation.slide_count}</Text>
-            </View>
-          </View>
+      <View style={styles.quickActionsSection}>
+        <Text style={styles.sectionTitle}>Actions rapides</Text>
+        
+        <View style={styles.quickActionsGrid}>
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={goToPresentations}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#3b82f6', '#2563eb']}
+              style={styles.quickActionGradient}
+            >
+              <Monitor size={32} color="#ffffff" />
+              <Text style={styles.quickActionTitle}>Présentations</Text>
+              <Text style={styles.quickActionSubtitle}>
+                {presentations.length} disponible{presentations.length > 1 ? 's' : ''}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
           
-          <View style={styles.cardContent}>
-            <Text style={styles.presentationTitle} numberOfLines={2}>
-              {presentation.name}
-            </Text>
-            <Text style={styles.presentationDescription} numberOfLines={3}>
-              {presentation.description || 'Aucune description disponible'}
-            </Text>
-            
-            <View style={styles.autoLoopIndicator}>
-              <Repeat size={14} color="rgba(255, 255, 255, 0.9)" />
-              <Text style={styles.autoLoopText}>Lecture automatique en boucle</Text>
-            </View>
-          </View>
-
-          <View style={styles.cardFooter}>
-            <Text style={styles.createdDate}>
-              {new Date(presentation.created_at).toLocaleDateString('fr-FR')}
-            </Text>
-            <View style={styles.playButton}>
-              <Play size={18} color="#ffffff" fill="#ffffff" />
-            </View>
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={goToSettings}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#6b7280', '#4b5563']}
+              style={styles.quickActionGradient}
+            >
+              <Settings size={32} color="#ffffff" />
+              <Text style={styles.quickActionTitle}>Paramètres</Text>
+              <Text style={styles.quickActionSubtitle}>Configuration</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
@@ -564,9 +565,9 @@ export default function HomeScreen() {
           colors={['#667eea', '#764ba2']}
           style={styles.loadingGradient}
         >
-          <RefreshCw size={48} color="#ffffff" />
+          <Home size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 2.2.0 - RÉTABLISSEMENT</Text>
+          <Text style={styles.loadingSubtext}>Version 2.3.0 - ACCUEIL RÉTABLI</Text>
         </LinearGradient>
       </View>
     );
@@ -587,9 +588,10 @@ export default function HomeScreen() {
         >
           <View style={styles.header}>
             <View style={styles.headerContent}>
-              <Text style={styles.title}>Kiosque de Présentations</Text>
+              <Home size={40} color="#ffffff" />
+              <Text style={styles.title}>Accueil - Kiosque Fire TV</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 2.2.0 RÉTABLISSEMENT
+                Version 2.3.0 - ACCUEIL RÉTABLI
               </Text>
               
               <TouchableOpacity
@@ -614,14 +616,15 @@ export default function HomeScreen() {
         {renderSurveillancePanel()}
         {renderAssignedPresentation()}
         {renderDefaultPresentation()}
+        {renderQuickActions()}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Présentations disponibles ({presentations.length})
+              Aperçu des présentations ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Surveillance active 3s • RÉTABLISSEMENT v2.2.0
+              🔄 Surveillance active 3s • ACCUEIL RÉTABLI v2.3.0
             </Text>
           </View>
           
@@ -680,10 +683,37 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.presentationsGrid}>
-              {presentations.map((presentation, index) => 
-                renderPresentationCard(presentation, index)
-              )}
+            <View style={styles.presentationsPreview}>
+              <Text style={styles.previewTitle}>Dernières présentations</Text>
+              {presentations.slice(0, 3).map((presentation, index) => (
+                <TouchableOpacity
+                  key={presentation.id}
+                  style={styles.previewCard}
+                  onPress={() => playPresentation(presentation)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.previewContent}>
+                    <Monitor size={24} color="#3b82f6" />
+                    <View style={styles.previewInfo}>
+                      <Text style={styles.previewName} numberOfLines={1}>
+                        {presentation.name || presentation.nom}
+                      </Text>
+                      <Text style={styles.previewDescription} numberOfLines={1}>
+                        {presentation.slide_count} slide{presentation.slide_count > 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    <Play size={20} color="#3b82f6" />
+                  </View>
+                </TouchableOpacity>
+              ))}
+              
+              <TouchableOpacity
+                style={styles.viewAllButton}
+                onPress={goToPresentations}
+              >
+                <Text style={styles.viewAllText}>Voir toutes les présentations</Text>
+                <Monitor size={16} color="#3b82f6" />
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -736,10 +766,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 8,
+    marginTop: 12,
     textAlign: 'center',
   },
   subtitle: {
@@ -803,7 +834,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     marginTop: 4,
   },
-  // NOUVEAU v2.2.0 - Styles pour le panneau de surveillance
+  // NOUVEAU v2.3.0 - Styles pour le panneau de surveillance
   surveillancePanel: {
     marginHorizontal: 20,
     marginBottom: 16,
@@ -964,6 +995,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  quickActionsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  quickActionCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  quickActionGradient: {
+    padding: 20,
+    alignItems: 'center',
+    minHeight: 120,
+    justifyContent: 'center',
+  },
+  quickActionTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  quickActionSubtitle: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+  },
   section: {
     padding: 20,
   },
@@ -984,88 +1050,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  presentationsGrid: {
-    gap: 16,
-  },
-  presentationCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  cardGradient: {
-    padding: 24,
-    minHeight: 220,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  slideCountBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  presentationsPreview: {
+    backgroundColor: '#ffffff',
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    padding: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  slideCountText: {
-    color: '#ffffff',
-    fontSize: 14,
+  previewTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-  },
-  cardContent: {
-    flex: 1,
+    color: '#1e293b',
     marginBottom: 16,
   },
-  presentationTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
-    lineHeight: 26,
-  },
-  presentationDescription: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    lineHeight: 20,
+  previewCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 12,
   },
-  autoLoopIndicator: {
+  previewContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-    gap: 4,
   },
-  autoLoopText: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 11,
+  previewInfo: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 12,
+  },
+  previewName: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
   },
-  cardFooter: {
+  previewDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  viewAllButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  createdDate: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  playButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 25,
-    width: 40,
-    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 16,
+    gap: 8,
+  },
+  viewAllText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
   configurationNeeded: {
     alignItems: 'center',

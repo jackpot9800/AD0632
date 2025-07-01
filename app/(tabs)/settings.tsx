@@ -126,7 +126,7 @@ export default function SettingsScreen() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'PresentationKiosk/2.2.0 (FireTV)',
+          'User-Agent': 'PresentationKiosk/2.3.0 (FireTV)',
           'Cache-Control': 'no-cache',
         },
       });
@@ -181,7 +181,7 @@ export default function SettingsScreen() {
     setSaving(true);
     
     try {
-      console.log('=== SAVING SETTINGS v2.2.0 ===');
+      console.log('=== SAVING SETTINGS v2.3.0 ===');
       
       const success = await apiService.setServerUrl(serverUrl.trim());
       
@@ -229,7 +229,7 @@ export default function SettingsScreen() {
     setRegistering(true);
     
     try {
-      console.log('=== MANUAL DEVICE REGISTRATION v2.2.0 ===');
+      console.log('=== MANUAL DEVICE REGISTRATION v2.3.0 ===');
       
       if (apiService.isDeviceRegistered()) {
         Alert.alert(
@@ -329,7 +329,7 @@ export default function SettingsScreen() {
             <SettingsIcon size={32} color="#ffffff" />
           </LinearGradient>
           <Text style={styles.title}>Paramètres</Text>
-          <Text style={styles.subtitle}>Version 2.2.0 - RÉTABLISSEMENT</Text>
+          <Text style={styles.subtitle}>Version 2.3.0 - ACCUEIL RÉTABLI</Text>
         </View>
 
         <View style={styles.section}>
@@ -469,7 +469,7 @@ export default function SettingsScreen() {
               <Monitor size={20} color="#9ca3af" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Version</Text>
-                <Text style={styles.infoValue}>2.2.0 - RÉTABLISSEMENT</Text>
+                <Text style={styles.infoValue}>2.3.0 - ACCUEIL RÉTABLI</Text>
               </View>
             </View>
             
@@ -516,7 +516,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#f8fafc',
   },
   scrollContent: {
     padding: 20,
@@ -536,12 +536,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#1e293b',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#9ca3af',
+    color: '#6b7280',
     textAlign: 'center',
   },
   section: {
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#1e293b',
     marginBottom: 16,
   },
   inputContainer: {
@@ -559,24 +559,24 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#374151',
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#ffffff',
+    color: '#1e293b',
     borderWidth: 2,
-    borderColor: '#374151',
+    borderColor: '#e5e7eb',
     marginBottom: 8,
   },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     padding: 16,
   },
@@ -649,12 +649,12 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#1e293b',
     marginBottom: 2,
   },
   settingDescription: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#6b7280',
   },
   saveAdvancedButton: {
     backgroundColor: '#10b981',
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   infoCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     padding: 16,
   },
@@ -688,12 +688,12 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#6b7280',
     marginBottom: 2,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#1e293b',
   },
 });
