@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,20 +25,25 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // SOLUTION ULTRA SIMPLE v1.5.0 - Un seul flag pour éviter les lancements multiples
-  const autoLaunchExecutedRef = useRef(false);
+  // SOLUTION DÉFINITIVE v1.6.0 - Surveillance continue et lancement automatique
+  const surveillanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoLaunchAttemptedRef = useRef<Set<number>>(new Set());
+  const isAppActiveRef = useRef(true);
 
   useEffect(() => {
     initializeApp();
     initializeStatusService();
     
     return () => {
+      if (surveillanceIntervalRef.current) {
+        clearInterval(surveillanceIntervalRef.current);
+      }
       statusService.stop();
     };
   }, []);
 
   const initializeApp = async () => {
-    console.log('=== STARTING APP INITIALIZATION v1.5.0 ULTRA SIMPLE ===');
+    console.log('=== STARTING APP INITIALIZATION v1.6.0 DÉFINITIVE ===');
     setLoading(true);
     
     await apiService.initialize();
@@ -55,13 +60,13 @@ export default function HomeScreen() {
     await checkConnection();
     await loadPresentations();
     
-    // SOLUTION ULTRA SIMPLE : Vérifier et lancer automatiquement
+    // DÉMARRER LA SURVEILLANCE CONTINUE
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      await checkAndLaunchDefaultPresentation();
+      startContinuousSurveillance();
     }
     
     setLoading(false);
-    console.log('=== APP INITIALIZATION COMPLETE v1.5.0 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v1.6.0 ===');
   };
 
   const initializeStatusService = async () => {
@@ -113,53 +118,70 @@ export default function HomeScreen() {
     }
   };
 
-  // SOLUTION ULTRA SIMPLE v1.5.0 : Une seule fonction qui fait tout
-  const checkAndLaunchDefaultPresentation = async () => {
-    if (autoLaunchExecutedRef.current) {
-      console.log('=== AUTO LAUNCH ALREADY EXECUTED v1.5.0 ===');
-      return;
-    }
-
-    console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.5.0 ===');
+  // SOLUTION DÉFINITIVE v1.6.0 : Surveillance continue toutes les 5 secondes
+  const startContinuousSurveillance = () => {
+    console.log('=== STARTING CONTINUOUS SURVEILLANCE v1.6.0 ===');
     
+    // Vérification immédiate
+    checkAndLaunchPresentations();
+    
+    // Surveillance continue toutes les 5 secondes
+    if (surveillanceIntervalRef.current) {
+      clearInterval(surveillanceIntervalRef.current);
+    }
+    
+    surveillanceIntervalRef.current = setInterval(() => {
+      if (isAppActiveRef.current) {
+        checkAndLaunchPresentations();
+      }
+    }, 5000); // Toutes les 5 secondes
+    
+    console.log('✅ Continuous surveillance started (5s interval)');
+  };
+
+  // FONCTION PRINCIPALE v1.6.0 : Vérification et lancement automatique
+  const checkAndLaunchPresentations = async () => {
     try {
-      // Vérifier d'abord les assignations (priorité)
+      console.log('=== CHECKING PRESENTATIONS v1.6.0 ===');
+      
+      // 1. Vérifier les assignations (priorité absolue)
       const assigned = await apiService.checkForAssignedPresentation();
       if (assigned) {
-        console.log('=== FOUND ASSIGNED PRESENTATION - LAUNCHING v1.5.0 ===');
+        console.log('✅ ASSIGNED PRESENTATION FOUND:', assigned.presentation_id);
         setAssignedPresentation(assigned);
-        autoLaunchExecutedRef.current = true;
         
-        setTimeout(() => {
+        if (!autoLaunchAttemptedRef.current.has(assigned.presentation_id)) {
+          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION');
+          autoLaunchAttemptedRef.current.add(assigned.presentation_id);
           launchAssignedPresentation(assigned);
-        }, 1000);
-        return;
+        }
+        return; // Priorité aux assignations
       }
-
-      // Si pas d'assignation, vérifier la présentation par défaut
+      
+      // 2. Vérifier la présentation par défaut
       const defaultPres = await apiService.checkForDefaultPresentation();
       if (defaultPres && defaultPres.presentation_id > 0) {
-        console.log('=== FOUND DEFAULT PRESENTATION - LAUNCHING AUTOMATICALLY v1.5.0 ===');
-        console.log('Default presentation ID:', defaultPres.presentation_id);
-        console.log('Default presentation name:', defaultPres.presentation_name);
-        
+        console.log('✅ DEFAULT PRESENTATION FOUND:', defaultPres.presentation_id);
         setDefaultPresentation(defaultPres);
-        autoLaunchExecutedRef.current = true;
         
-        // LANCEMENT AUTOMATIQUE EN BOUCLE INFINIE
-        setTimeout(() => {
+        // LANCEMENT AUTOMATIQUE GARANTI
+        if (!autoLaunchAttemptedRef.current.has(defaultPres.presentation_id)) {
+          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP');
+          autoLaunchAttemptedRef.current.add(defaultPres.presentation_id);
           launchDefaultPresentationInfiniteLoop(defaultPres);
-        }, 1500);
+        }
       } else {
-        console.log('=== NO DEFAULT PRESENTATION FOUND v1.5.0 ===');
+        console.log('❌ No default presentation found');
+        setDefaultPresentation(null);
       }
+      
     } catch (error) {
       console.error('Error checking presentations:', error);
     }
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.5.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.6.0 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -174,39 +196,39 @@ export default function HomeScreen() {
     router.push(url);
   };
 
-  // SOLUTION ULTRA SIMPLE v1.5.0 : Lancement en boucle infinie
+  // LANCEMENT EN BOUCLE INFINIE GARANTI v1.6.0
   const launchDefaultPresentationInfiniteLoop = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v1.5.0 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v1.6.0 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
     const params = new URLSearchParams({
       auto_play: 'true',
-      loop_mode: 'true', // BOUCLE INFINIE
+      loop_mode: 'true', // BOUCLE INFINIE GARANTIE
       assigned: 'false',
       default: 'true'
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('Navigating to default presentation with infinite loop:', url);
+    console.log('🔄 Navigating to default presentation with INFINITE LOOP:', url);
     router.push(url);
   };
 
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v1.5.0 ===');
+    console.log('=== MANUAL REFRESH v1.6.0 ===');
     setRefreshing(true);
     
-    // RÉINITIALISER le flag pour permettre un nouveau lancement automatique
-    autoLaunchExecutedRef.current = false;
+    // RÉINITIALISER complètement les tentatives de lancement
+    autoLaunchAttemptedRef.current.clear();
     
     await checkConnection();
     await loadPresentations();
     
-    // RELANCER la vérification automatique après le refresh
+    // RELANCER la surveillance après le refresh
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      await checkAndLaunchDefaultPresentation();
+      startContinuousSurveillance();
     }
     
     setRefreshing(false);
@@ -217,6 +239,9 @@ export default function HomeScreen() {
   };
 
   const playPresentation = (presentation: Presentation) => {
+    // Marquer cette présentation comme tentée pour éviter les conflits
+    autoLaunchAttemptedRef.current.add(presentation.id);
+    
     statusService.updatePresentationStatus(
       presentation.id,
       presentation.name || presentation.nom || 'Présentation',
@@ -267,7 +292,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.5.0 - SOLUTION ULTRA SIMPLE Lancement automatique • ID: {apiService.getDeviceId()}
+          Version 1.6.0 - SOLUTION DÉFINITIVE Surveillance continue • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -311,7 +336,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🚀 Lecture automatique immédiate
+                🚀 Surveillance continue - Lancement automatique
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -359,7 +384,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🔄 BOUCLE INFINIE AUTOMATIQUE v1.5.0
+                🔄 BOUCLE INFINIE - Surveillance continue v1.6.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -437,7 +462,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.5.0 - SOLUTION ULTRA SIMPLE</Text>
+          <Text style={styles.loadingSubtext}>Version 1.6.0 - SOLUTION DÉFINITIVE</Text>
         </LinearGradient>
       </View>
     );
@@ -460,7 +485,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.5.0 SOLUTION ULTRA SIMPLE
+                Fire TV Stick - Version 1.6.0 SOLUTION DÉFINITIVE
               </Text>
               
               <TouchableOpacity
@@ -491,7 +516,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Lecture automatique en boucle • SOLUTION ULTRA SIMPLE v1.5.0
+              🔄 Surveillance continue toutes les 5s • SOLUTION DÉFINITIVE v1.6.0
             </Text>
           </View>
           
