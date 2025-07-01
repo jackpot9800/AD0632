@@ -93,7 +93,7 @@ class ApiService {
 
   async initialize() {
     try {
-      console.log('=== INITIALIZING API SERVICE v1.7.0 SIMPLE ===');
+      console.log('=== INITIALIZING API SERVICE v1.7.1 DEBUG ===');
       
       const savedUrl = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
       const savedDeviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
@@ -124,7 +124,7 @@ class ApiService {
         console.log('Loaded enrollment token');
       }
 
-      console.log('=== API SERVICE INITIALIZED v1.7.0 ===');
+      console.log('=== API SERVICE INITIALIZED v1.7.1 ===');
       
     } catch (error) {
       console.error('Error initializing API service:', error);
@@ -185,8 +185,7 @@ class ApiService {
   }
 
   /**
-   * SOLUTION SIMPLE v1.7.0: Démarre la vérification périodique des présentations assignées
-   * Fréquence: toutes les 10 secondes - simple et efficace
+   * DEBUG v1.7.1: Démarre la vérification périodique des présentations assignées
    */
   async startAssignmentCheck(callback?: (presentation: AssignedPresentation) => void) {
     if (!this.baseUrl || !this.isRegistered) {
@@ -196,7 +195,7 @@ class ApiService {
 
     await this.detectApiType();
 
-    console.log('=== STARTING ASSIGNMENT CHECK v1.7.0 SIMPLE ===');
+    console.log('=== STARTING ASSIGNMENT CHECK v1.7.1 DEBUG ===');
     console.log('API Type:', this.apiType);
 
     if (this.apiType === 'affichageDynamique') {
@@ -228,21 +227,20 @@ class ApiService {
     // Vérification immédiate au démarrage
     this.checkForAssignedPresentation();
 
-    // SIMPLE v1.7.0: Surveillance toutes les 10 secondes
+    // DEBUG v1.7.1: Surveillance toutes les 10 secondes
     this.assignmentCheckInterval = setInterval(async () => {
       try {
         await this.checkForAssignedPresentation();
       } catch (error) {
         console.log('Assignment check failed:', error);
       }
-    }, 10000); // 10 secondes - simple
+    }, 10000); // 10 secondes
 
     console.log('✅ Assignment check started with 10s interval');
   }
 
   /**
-   * SOLUTION SIMPLE v1.7.0: Démarre la vérification périodique des présentations par défaut
-   * Fréquence: toutes les 10 secondes - simple et efficace
+   * DEBUG v1.7.1: Démarre la vérification périodique des présentations par défaut
    */
   async startDefaultPresentationCheck(callback?: (presentation: DefaultPresentation) => void) {
     if (!this.baseUrl || !this.isRegistered) {
@@ -252,7 +250,7 @@ class ApiService {
 
     await this.detectApiType();
 
-    console.log('=== STARTING DEFAULT PRESENTATION CHECK v1.7.0 SIMPLE ===');
+    console.log('=== STARTING DEFAULT PRESENTATION CHECK v1.7.1 DEBUG ===');
     console.log('API Type:', this.apiType);
 
     if (this.apiType === 'affichageDynamique') {
@@ -281,11 +279,11 @@ class ApiService {
 
     this.onDefaultPresentationCallback = callback || null;
 
-    // SIMPLE v1.7.0: Vérification immédiate au démarrage
-    console.log('=== IMMEDIATE DEFAULT PRESENTATION CHECK v1.7.0 ===');
+    // DEBUG v1.7.1: Vérification immédiate au démarrage
+    console.log('=== IMMEDIATE DEFAULT PRESENTATION CHECK v1.7.1 ===');
     this.checkForDefaultPresentation();
 
-    // SIMPLE v1.7.0: Surveillance toutes les 10 secondes
+    // DEBUG v1.7.1: Surveillance toutes les 10 secondes
     this.defaultCheckInterval = setInterval(async () => {
       try {
         await this.checkForDefaultPresentation();
@@ -331,7 +329,7 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v1.7.0 ===');
+      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v1.7.1 ===');
       const endpoint = this.getEndpoint('/device/assigned-presentation');
       console.log('Using endpoint:', endpoint);
       
@@ -373,57 +371,76 @@ class ApiService {
   }
 
   /**
-   * SOLUTION SIMPLE v1.7.0: Vérifie s'il y a une présentation par défaut pour cet appareil
-   * VALIDATION SIMPLE: juste vérifier que l'ID > 0
+   * DEBUG v1.7.1: Vérifie s'il y a une présentation par défaut pour cet appareil
+   * AVEC LOGS DÉTAILLÉS pour comprendre le problème
    */
   async checkForDefaultPresentation(): Promise<DefaultPresentation | null> {
     try {
       if (!this.baseUrl || !this.isRegistered || !this.defaultCheckEnabled) {
-        console.log('Default presentation check disabled or not ready');
+        console.log('=== DEFAULT CHECK DISABLED v1.7.1 ===');
+        console.log('baseUrl:', !!this.baseUrl);
+        console.log('isRegistered:', this.isRegistered);
+        console.log('defaultCheckEnabled:', this.defaultCheckEnabled);
         return null;
       }
 
-      console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.7.0 SIMPLE ===');
+      console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.7.1 DEBUG ===');
       const endpoint = this.getEndpoint('/device/default-presentation');
       console.log('Using endpoint:', endpoint);
       console.log('Device ID:', this.deviceId);
+      console.log('Base URL:', this.baseUrl);
       
       const response = await this.makeRequest<ApiResponse<DefaultPresentation>>(endpoint);
       
-      console.log('=== DEFAULT PRESENTATION RESPONSE v1.7.0 ===');
-      console.log('Full response:', response);
+      console.log('=== DEFAULT PRESENTATION RESPONSE DEBUG v1.7.1 ===');
+      console.log('Full response object:', JSON.stringify(response, null, 2));
       
       const defaultPresentation = response.default_presentation;
+      console.log('Extracted default_presentation:', JSON.stringify(defaultPresentation, null, 2));
 
-      // VALIDATION SIMPLE v1.7.0: juste vérifier que l'ID > 0
-      if (defaultPresentation && 
-          defaultPresentation.presentation_id && 
-          defaultPresentation.presentation_id > 0) {
+      // DEBUG DÉTAILLÉ v1.7.1
+      if (defaultPresentation) {
+        console.log('=== VALIDATION DEBUG v1.7.1 ===');
+        console.log('presentation_id exists:', !!defaultPresentation.presentation_id);
+        console.log('presentation_id value:', defaultPresentation.presentation_id);
+        console.log('presentation_id type:', typeof defaultPresentation.presentation_id);
+        console.log('presentation_id > 0:', (defaultPresentation.presentation_id || 0) > 0);
+        console.log('presentation_name exists:', !!defaultPresentation.presentation_name);
+        console.log('presentation_name value:', defaultPresentation.presentation_name);
         
-        console.log('✅ Found VALID default presentation v1.7.0:', {
-          presentation_id: defaultPresentation.presentation_id,
-          presentation_name: defaultPresentation.presentation_name,
-          is_default: defaultPresentation.is_default
-        });
-        
-        await AsyncStorage.setItem(STORAGE_KEYS.DEFAULT_PRESENTATION, JSON.stringify(defaultPresentation));
-        
-        // SIMPLE v1.7.0: Appeler le callback IMMÉDIATEMENT
-        if (this.onDefaultPresentationCallback) {
-          console.log('=== CALLING DEFAULT PRESENTATION CALLBACK v1.7.0 ===');
-          this.onDefaultPresentationCallback(defaultPresentation);
+        if (defaultPresentation.presentation_id && defaultPresentation.presentation_id > 0) {
+          console.log('✅ Found VALID default presentation v1.7.1:', {
+            presentation_id: defaultPresentation.presentation_id,
+            presentation_name: defaultPresentation.presentation_name,
+            is_default: defaultPresentation.is_default
+          });
+          
+          await AsyncStorage.setItem(STORAGE_KEYS.DEFAULT_PRESENTATION, JSON.stringify(defaultPresentation));
+          
+          // DEBUG v1.7.1: Appeler le callback IMMÉDIATEMENT
+          if (this.onDefaultPresentationCallback) {
+            console.log('=== CALLING DEFAULT PRESENTATION CALLBACK v1.7.1 ===');
+            this.onDefaultPresentationCallback(defaultPresentation);
+          }
+          
+          return defaultPresentation;
+        } else {
+          console.log('❌ Invalid presentation_id v1.7.1');
+          console.log('presentation_id:', defaultPresentation.presentation_id);
+          console.log('Expected: number > 0');
         }
-        
-        return defaultPresentation;
       } else {
-        console.log('❌ No valid default presentation found v1.7.0');
-        console.log('Response data:', defaultPresentation);
-        
-        // Supprimer la présentation par défaut locale si elle n'est plus valide
-        await AsyncStorage.removeItem(STORAGE_KEYS.DEFAULT_PRESENTATION);
-        return null;
+        console.log('❌ No default_presentation in response v1.7.1');
       }
+      
+      // Supprimer la présentation par défaut locale si elle n'est plus valide
+      await AsyncStorage.removeItem(STORAGE_KEYS.DEFAULT_PRESENTATION);
+      return null;
+      
     } catch (error) {
+      console.error('=== DEFAULT PRESENTATION CHECK ERROR v1.7.1 ===');
+      console.error('Error details:', error);
+      
       if (error instanceof Error) {
         if (error.message.includes('Endpoint not found') || error.message.includes('404')) {
           console.log('⚠️ Default presentation endpoint not available on this server version - disabling default presentation check');
@@ -487,7 +504,7 @@ class ApiService {
 
   async setServerUrl(url: string): Promise<boolean> {
     try {
-      console.log('=== SETTING SERVER URL v1.7.0 ===');
+      console.log('=== SETTING SERVER URL v1.7.1 ===');
       console.log('Input URL:', url);
       
       let cleanUrl = url.replace(/\/+$/, '');
@@ -526,7 +543,7 @@ class ApiService {
       if (connectionOk) {
         const registrationOk = await this.registerDevice();
         if (registrationOk) {
-          console.log('=== SERVER SETUP COMPLETE v1.7.0 ===');
+          console.log('=== SERVER SETUP COMPLETE v1.7.1 ===');
           return true;
         } else {
           console.warn('Connection OK but registration failed');
@@ -718,7 +735,7 @@ class ApiService {
     const finalEndpoint = this.getEndpoint(cleanEndpoint);
     const url = `${this.baseUrl}${finalEndpoint}`;
     
-    console.log('=== API REQUEST v1.7.0 ===');
+    console.log('=== API REQUEST v1.7.1 DEBUG ===');
     console.log('Original endpoint:', cleanEndpoint);
     console.log('Final endpoint:', finalEndpoint);
     console.log('URL:', url);
@@ -732,10 +749,10 @@ class ApiService {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
-      'User-Agent': 'PresentationKiosk/1.7.0 (Android; FireTV)',
+      'User-Agent': 'PresentationKiosk/1.7.1 (Android; FireTV)',
       'X-Device-ID': this.deviceId,
       'X-Device-Type': 'firetv',
-      'X-App-Version': '1.7.0',
+      'X-App-Version': '1.7.1',
       'X-Platform': 'android',
       'Connection': 'keep-alive',
       ...options.headers,
@@ -762,7 +779,7 @@ class ApiService {
       console.log('Status:', response.status, response.statusText);
 
       const responseText = await response.text();
-      console.log('=== RAW RESPONSE ===');
+      console.log('=== RAW RESPONSE DEBUG v1.7.1 ===');
       console.log('Length:', responseText.length);
       console.log('First 1000 chars:', responseText.substring(0, 1000));
 
@@ -819,7 +836,7 @@ class ApiService {
 
   async testConnection(): Promise<boolean> {
     try {
-      console.log('=== TESTING CONNECTION v1.7.0 ===');
+      console.log('=== TESTING CONNECTION v1.7.1 ===');
       console.log('Testing URL:', this.baseUrl);
       
       if (!this.baseUrl) {
@@ -876,7 +893,7 @@ class ApiService {
 
   async registerDevice(): Promise<boolean> {
     try {
-      console.log('=== REGISTERING DEVICE v1.7.0 ===');
+      console.log('=== REGISTERING DEVICE v1.7.1 ===');
       console.log('Device ID:', this.deviceId);
       console.log('Server URL:', this.baseUrl);
       console.log('API Type:', this.apiType);
@@ -886,7 +903,7 @@ class ApiService {
         name: `Fire TV Stick - ${this.deviceId.split('_').pop()}`,
         type: 'firetv',
         platform: 'android',
-        user_agent: 'PresentationKiosk/1.7.0 (Android; FireTV)',
+        user_agent: 'PresentationKiosk/1.7.1 (Android; FireTV)',
         capabilities: [
           'video_playback',
           'image_display',
@@ -921,7 +938,7 @@ class ApiService {
           await AsyncStorage.setItem(STORAGE_KEYS.ENROLLMENT_TOKEN, response.token);
         }
 
-        console.log('=== DEVICE REGISTERED SUCCESSFULLY v1.7.0 ===');
+        console.log('=== DEVICE REGISTERED SUCCESSFULLY v1.7.1 ===');
         console.log('Device ID:', this.deviceId);
         console.log('Token:', response.token);
         return true;
@@ -946,7 +963,7 @@ class ApiService {
 
   async getPresentations(): Promise<Presentation[]> {
     try {
-      console.log('=== FETCHING PRESENTATIONS v1.7.0 ===');
+      console.log('=== FETCHING PRESENTATIONS v1.7.1 ===');
       
       if (!this.isRegistered) {
         console.log('Device not registered, attempting registration...');
@@ -978,7 +995,7 @@ class ApiService {
 
   async getPresentation(id: number): Promise<PresentationDetails> {
     try {
-      console.log('=== FETCHING PRESENTATION DETAILS v1.7.0 ===');
+      console.log('=== FETCHING PRESENTATION DETAILS v1.7.1 ===');
       console.log('Presentation ID:', id);
       
       if (!this.isRegistered) {
@@ -1033,7 +1050,7 @@ class ApiService {
         
         const duration = parseInt(slide.duration?.toString() || '5');
         
-        console.log('=== SLIDE DURATION DEBUG v1.7.0 ===');
+        console.log('=== SLIDE DURATION DEBUG v1.7.1 ===');
         console.log('Slide ID:', slide.id);
         console.log('Raw duration from DB:', slide.duration);
         console.log('Parsed duration:', duration);
@@ -1051,7 +1068,7 @@ class ApiService {
         throw new Error('Aucune slide valide trouvée pour cette présentation');
       }
 
-      console.log('=== VALID SLIDES WITH DURATIONS v1.7.0 ===');
+      console.log('=== VALID SLIDES WITH DURATIONS v1.7.1 ===');
       console.log('Count:', validSlides.length);
       validSlides.forEach((slide, index) => {
         console.log(`Slide ${index + 1}:`, {
@@ -1123,7 +1140,7 @@ class ApiService {
   }
 
   async resetDevice(): Promise<void> {
-    console.log('=== RESETTING DEVICE v1.7.0 ===');
+    console.log('=== RESETTING DEVICE v1.7.1 ===');
     
     this.stopAssignmentCheck();
     this.stopDefaultPresentationCheck();

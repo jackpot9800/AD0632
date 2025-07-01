@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // SOLUTION SIMPLE v1.7.0 - Retour à la base
+  // DEBUG v1.7.1 - Surveillance avec logs détaillés
   const surveillanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoLaunchAttemptedRef = useRef<Set<number>>(new Set());
   const isAppActiveRef = useRef(true);
@@ -43,7 +43,7 @@ export default function HomeScreen() {
   }, []);
 
   const initializeApp = async () => {
-    console.log('=== STARTING APP INITIALIZATION v1.7.0 SIMPLE ===');
+    console.log('=== STARTING APP INITIALIZATION v1.7.1 DEBUG ===');
     setLoading(true);
     
     await apiService.initialize();
@@ -60,13 +60,13 @@ export default function HomeScreen() {
     await checkConnection();
     await loadPresentations();
     
-    // DÉMARRER LA SURVEILLANCE SIMPLE
+    // DÉMARRER LA SURVEILLANCE AVEC DEBUG
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startSimpleSurveillance();
+      startDebugSurveillance();
     }
     
     setLoading(false);
-    console.log('=== APP INITIALIZATION COMPLETE v1.7.0 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v1.7.1 ===');
   };
 
   const initializeStatusService = async () => {
@@ -118,33 +118,38 @@ export default function HomeScreen() {
     }
   };
 
-  // SOLUTION SIMPLE v1.7.0 : Surveillance basique toutes les 10 secondes
-  const startSimpleSurveillance = () => {
-    console.log('=== STARTING SIMPLE SURVEILLANCE v1.7.0 ===');
+  // DEBUG v1.7.1 : Surveillance avec logs détaillés
+  const startDebugSurveillance = () => {
+    console.log('=== STARTING DEBUG SURVEILLANCE v1.7.1 ===');
     
     // Vérification immédiate
     checkAndLaunchPresentations();
     
-    // Surveillance simple toutes les 10 secondes
+    // Surveillance toutes les 10 secondes avec logs
     if (surveillanceIntervalRef.current) {
       clearInterval(surveillanceIntervalRef.current);
     }
     
     surveillanceIntervalRef.current = setInterval(() => {
       if (isAppActiveRef.current) {
+        console.log('=== SURVEILLANCE TICK v1.7.1 ===', new Date().toLocaleTimeString());
         checkAndLaunchPresentations();
       }
-    }, 10000); // 10 secondes - simple et efficace
+    }, 10000);
     
-    console.log('✅ Simple surveillance started (10s interval)');
+    console.log('✅ Debug surveillance started (10s interval)');
   };
 
-  // FONCTION SIMPLE v1.7.0 : Vérification basique
+  // FONCTION DEBUG v1.7.1 : Vérification avec logs détaillés
   const checkAndLaunchPresentations = async () => {
     try {
-      console.log('=== SIMPLE CHECK v1.7.0 ===');
+      console.log('=== DEBUG CHECK v1.7.1 ===');
+      console.log('Device ID:', apiService.getDeviceId());
+      console.log('Server URL:', apiService.getServerUrl());
+      console.log('Is registered:', apiService.isDeviceRegistered());
       
       // 1. Vérifier les assignations (priorité absolue)
+      console.log('🔍 Checking for assigned presentations...');
       const assigned = await apiService.checkForAssignedPresentation();
       if (assigned) {
         console.log('✅ ASSIGNED PRESENTATION FOUND:', assigned.presentation_id);
@@ -158,30 +163,49 @@ export default function HomeScreen() {
         return; // Priorité aux assignations
       }
       
-      // 2. Vérifier la présentation par défaut - SIMPLE
+      // 2. Vérifier la présentation par défaut - AVEC DEBUG DÉTAILLÉ
+      console.log('🔍 Checking for default presentation...');
       const defaultPres = await apiService.checkForDefaultPresentation();
+      
+      console.log('=== DEFAULT PRESENTATION DEBUG v1.7.1 ===');
+      console.log('Raw response:', defaultPres);
+      console.log('Has presentation_id:', !!defaultPres?.presentation_id);
+      console.log('Presentation ID value:', defaultPres?.presentation_id);
+      console.log('ID > 0:', (defaultPres?.presentation_id || 0) > 0);
+      console.log('Has name:', !!defaultPres?.presentation_name);
+      console.log('Name value:', defaultPres?.presentation_name);
+      
       if (defaultPres && defaultPres.presentation_id && defaultPres.presentation_id > 0) {
         console.log('✅ DEFAULT PRESENTATION FOUND:', defaultPres.presentation_id);
         setDefaultPresentation(defaultPres);
         
-        // LANCEMENT AUTOMATIQUE SIMPLE
+        // LANCEMENT AUTOMATIQUE AVEC DEBUG
         if (!autoLaunchAttemptedRef.current.has(defaultPres.presentation_id)) {
-          console.log('🚀 LAUNCHING DEFAULT PRESENTATION SIMPLE');
+          console.log('🚀 LAUNCHING DEFAULT PRESENTATION');
+          console.log('Presentation details:', {
+            id: defaultPres.presentation_id,
+            name: defaultPres.presentation_name,
+            description: defaultPres.presentation_description
+          });
           autoLaunchAttemptedRef.current.add(defaultPres.presentation_id);
           launchDefaultPresentation(defaultPres);
+        } else {
+          console.log('⚠️ Default presentation already attempted:', defaultPres.presentation_id);
         }
       } else {
-        console.log('❌ No default presentation found');
+        console.log('❌ No valid default presentation found');
+        console.log('Setting defaultPresentation to null');
         setDefaultPresentation(null);
       }
       
     } catch (error) {
-      console.error('Error checking presentations:', error);
+      console.error('=== ERROR IN CHECK AND LAUNCH v1.7.1 ===');
+      console.error('Error details:', error);
     }
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.7.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.7.1 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -196,11 +220,12 @@ export default function HomeScreen() {
     router.push(url);
   };
 
-  // LANCEMENT SIMPLE v1.7.0
+  // LANCEMENT AVEC DEBUG v1.7.1
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION SIMPLE v1.7.0 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION DEBUG v1.7.1 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
+    console.log('Presentation description:', defaultPres.presentation_description);
     
     const params = new URLSearchParams({
       auto_play: 'true',
@@ -210,14 +235,25 @@ export default function HomeScreen() {
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('🔄 Navigating to default presentation SIMPLE:', url);
+    console.log('🔄 Navigating to default presentation:', url);
+    
+    // Mettre à jour le statut avant navigation
+    statusService.updatePresentationStatus(
+      defaultPres.presentation_id,
+      defaultPres.presentation_name || 'Présentation par défaut',
+      0,
+      defaultPres.slide_count || 0,
+      true,
+      true
+    );
+    
     router.push(url);
   };
 
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v1.7.0 ===');
+    console.log('=== MANUAL REFRESH v1.7.1 ===');
     setRefreshing(true);
     
     // RÉINITIALISER complètement les tentatives de lancement
@@ -228,7 +264,7 @@ export default function HomeScreen() {
     
     // RELANCER la surveillance après le refresh
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startSimpleSurveillance();
+      startDebugSurveillance();
     }
     
     setRefreshing(false);
@@ -292,7 +328,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.7.0 - SIMPLE ET EFFICACE • Surveillance 10s • ID: {apiService.getDeviceId()}
+          Version 1.7.1 - DEBUG DÉTAILLÉ • Surveillance 10s • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -336,7 +372,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🚀 Surveillance simple - Lancement automatique
+                🚀 Surveillance debug - Lancement automatique
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -349,7 +385,25 @@ export default function HomeScreen() {
   };
 
   const renderDefaultPresentation = () => {
-    if (!defaultPresentation) return null;
+    if (!defaultPresentation) {
+      return (
+        <View style={styles.assignedSection}>
+          <Text style={styles.assignedTitle}>⭐ Présentation par défaut</Text>
+          <View style={styles.debugCard}>
+            <Text style={styles.debugTitle}>🔍 DEBUG v1.7.1</Text>
+            <Text style={styles.debugText}>
+              Aucune présentation par défaut valide trouvée
+            </Text>
+            <Text style={styles.debugText}>
+              Device ID: {apiService.getDeviceId()}
+            </Text>
+            <Text style={styles.debugText}>
+              Vérifiez que presentation_defaut_id > 0 dans la table appareils
+            </Text>
+          </View>
+        </View>
+      );
+    }
 
     return (
       <View style={styles.assignedSection}>
@@ -384,7 +438,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🔄 BOUCLE INFINIE - Simple et efficace v1.7.0
+                🔄 DEBUG v1.7.1 - ID: {defaultPresentation.presentation_id}
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -462,7 +516,7 @@ export default function HomeScreen() {
         >
           <Home size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.7.0 - SIMPLE ET EFFICACE</Text>
+          <Text style={styles.loadingSubtext}>Version 1.7.1 - DEBUG DÉTAILLÉ</Text>
         </LinearGradient>
       </View>
     );
@@ -486,7 +540,7 @@ export default function HomeScreen() {
               <Home size={40} color="#ffffff" />
               <Text style={styles.title}>Accueil - Kiosque Fire TV</Text>
               <Text style={styles.subtitle}>
-                Version 1.7.0 - SIMPLE ET EFFICACE
+                Version 1.7.1 - DEBUG DÉTAILLÉ
               </Text>
               
               <TouchableOpacity
@@ -517,7 +571,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Surveillance simple 10s • SIMPLE ET EFFICACE v1.7.0
+              🔄 Surveillance debug 10s • DEBUG DÉTAILLÉ v1.7.1
             </Text>
           </View>
           
@@ -793,6 +847,25 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  debugCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#f59e0b',
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+    fontFamily: 'monospace',
   },
   section: {
     padding: 20,
