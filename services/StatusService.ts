@@ -277,6 +277,7 @@ class StatusService {
 
     const status: DeviceStatus = {
       device_id: deviceId,
+      device_name: this.deviceName || apiService.getDeviceName() || `Fire TV ${deviceId.substring(deviceId.length - 6)}`,
       status: this.currentStatus?.status || 'online',
       current_presentation_id: this.currentStatus?.current_presentation_id,
       current_presentation_name: this.currentStatus?.current_presentation_name,
@@ -290,6 +291,7 @@ class StatusService {
       wifi_strength: systemInfo.wifiStrength,
       app_version: appVersion,
       error_message: this.currentStatus?.error_message,
+      local_ip: this.localIpAddress,
     };
 
     return status;
