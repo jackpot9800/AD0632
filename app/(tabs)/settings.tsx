@@ -126,7 +126,7 @@ export default function SettingsScreen() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'PresentationKiosk/1.3.3 (FireTV)',
+          'User-Agent': 'PresentationKiosk/2.0.0 (FireTV)',
           'Cache-Control': 'no-cache',
         },
       });
@@ -181,7 +181,7 @@ export default function SettingsScreen() {
     setSaving(true);
     
     try {
-      console.log('=== SAVING SETTINGS v1.3.3 ===');
+      console.log('=== SAVING SETTINGS v2.0.0 ===');
       
       const success = await apiService.setServerUrl(serverUrl.trim());
       
@@ -229,7 +229,7 @@ export default function SettingsScreen() {
     setRegistering(true);
     
     try {
-      console.log('=== MANUAL DEVICE REGISTRATION v1.3.3 ===');
+      console.log('=== MANUAL DEVICE REGISTRATION v2.0.0 ===');
       
       if (apiService.isDeviceRegistered()) {
         Alert.alert(
@@ -329,7 +329,7 @@ export default function SettingsScreen() {
             <SettingsIcon size={32} color="#ffffff" />
           </LinearGradient>
           <Text style={styles.title}>Paramètres</Text>
-          <Text style={styles.subtitle}>Version 1.3.3 - Package.json fonctionnel + Keep-awake</Text>
+          <Text style={styles.subtitle}>Version 2.0.0 - SOLUTION UNIFIÉE</Text>
         </View>
 
         <View style={styles.section}>
@@ -469,7 +469,7 @@ export default function SettingsScreen() {
               <Monitor size={20} color="#9ca3af" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Version</Text>
-                <Text style={styles.infoValue}>1.3.3 - Package.json fonctionnel + Keep-awake</Text>
+                <Text style={styles.infoValue}>2.0.0 - SOLUTION UNIFIÉE</Text>
               </View>
             </View>
             
