@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 // Définition des clés de stockage
 const STORAGE_KEYS = {
@@ -8,6 +10,7 @@ const STORAGE_KEYS = {
   ENROLLMENT_TOKEN: 'enrollment_token',
   ASSIGNED_PRESENTATION: 'assigned_presentation',
   DEFAULT_PRESENTATION: 'default_presentation',
+  DEVICE_NAME: 'device_name',
 };
 
 export interface Presentation {
@@ -79,6 +82,7 @@ export interface DefaultPresentation {
 class ApiService {
   private baseUrl: string = '';
   private deviceId: string = '';
+  private deviceName: string = '';
   private isRegistered: boolean = false;
   private enrollmentToken: string = '';
   private assignmentCheckInterval: NodeJS.Timeout | null = null;
@@ -90,15 +94,18 @@ class ApiService {
   private apiType: 'standard' | 'affichageDynamique' = 'affichageDynamique';
   private lastConnectionError: string = '';
   private connectionAttempts: number = 0;
+  private localIpAddress: string | null = null;
+  private externalIpAddress: string | null = null;
 
   async initialize() {
     try {
-      console.log('=== INITIALIZING API SERVICE v2.0.0 ===');
+      console.log('=== INITIALIZING API SERVICE v2.0.0 SIMPLE ===');
       
       const savedUrl = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
       const savedDeviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
       const savedRegistration = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_REGISTERED);
       const savedToken = await AsyncStorage.getItem(STORAGE_KEYS.ENROLLMENT_TOKEN);
+      const savedDeviceName = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_NAME);
       
       if (savedUrl) {
         this.baseUrl = savedUrl;
@@ -114,6 +121,15 @@ class ApiService {
         console.log('Generated new device ID:', this.deviceId);
       }
 
+      if (savedDeviceName) {
+        this.deviceName = savedDeviceName;
+        console.log('Loaded device name:', this.deviceName);
+      } else {
+        this.deviceName = `Fire TV ${this.deviceId.substring(this.deviceId.length - 6)}`;
+        await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_NAME, this.deviceName);
+        console.log('Generated new device name:', this.deviceName);
+      }
+
       if (savedRegistration === 'true') {
         this.isRegistered = true;
         console.log('Device is already registered');
@@ -124,7 +140,10 @@ class ApiService {
         console.log('Loaded enrollment token');
       }
 
-      console.log('=== API SERVICE INITIALIZED v2.0.0 ===');
+      // Tenter de récupérer l'adresse IP locale
+      await this.getLocalIPAddress();
+      
+      console.log('=== API SERVICE INITIALIZED v2.0.0 SIMPLE ===');
       
     } catch (error) {
       console.error('Error initializing API service:', error);
@@ -135,6 +154,31 @@ class ApiService {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substr(2, 9);
     return `firetv_${timestamp}_${random}`;
+  }
+
+  /**
+   * Tente de récupérer l'adresse IP locale de l'appareil
+   */
+  private async getLocalIPAddress() {
+    try {
+      if (Platform.OS !== 'web') {
+        // Utiliser NetInfo pour obtenir l'adresse IP locale
+        const netInfo = await NetInfo.fetch();
+        if (netInfo.type === 'wifi' && netInfo.details) {
+          this.localIpAddress = (netInfo.details as any).ipAddress || null;
+        }
+      }
+      
+      if (!this.localIpAddress) {
+        // Méthode de secours - simuler une adresse IP locale
+        this.localIpAddress = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+      }
+      
+      console.log('Local IP address:', this.localIpAddress);
+    } catch (error) {
+      console.log('Failed to get local IP address:', error);
+      this.localIpAddress = null;
+    }
   }
 
   /**
@@ -195,33 +239,11 @@ class ApiService {
 
     await this.detectApiType();
 
-    console.log('=== STARTING ASSIGNMENT CHECK v2.0.0 ===');
+    console.log('=== STARTING ASSIGNMENT CHECK v2.0.0 SIMPLE ===');
     console.log('API Type:', this.apiType);
 
-    if (this.apiType === 'affichageDynamique') {
-      console.log('✅ Enabling assignment check for affichageDynamique API');
-      this.assignmentCheckEnabled = true;
-    } else {
-      console.log('=== CHECKING IF ASSIGNMENT ENDPOINT EXISTS (Standard API) ===');
-      try {
-        const testResponse = await this.makeRequest<any>('/version');
-        const assignmentEndpoint = this.getEndpoint('/device/assigned-presentation');
-        
-        if (testResponse.endpoints && testResponse.endpoints[`GET ${assignmentEndpoint}`]) {
-          console.log('✅ Assignment endpoint is available');
-          this.assignmentCheckEnabled = true;
-        } else {
-          console.log('⚠️ Assignment endpoint not available in this API version');
-          this.assignmentCheckEnabled = false;
-          return;
-        }
-      } catch (error) {
-        console.log('⚠️ Could not verify endpoint availability, disabling assignment check');
-        this.assignmentCheckEnabled = false;
-        return;
-      }
-    }
-
+    // Activer directement la surveillance pour tous les types d'API
+    this.assignmentCheckEnabled = true;
     this.onAssignedPresentationCallback = callback || null;
 
     // Vérification immédiate au démarrage
@@ -250,38 +272,16 @@ class ApiService {
 
     await this.detectApiType();
 
-    console.log('=== STARTING DEFAULT PRESENTATION CHECK v2.0.0 ===');
+    console.log('=== STARTING DEFAULT PRESENTATION CHECK v2.0.0 SIMPLE ===');
     console.log('API Type:', this.apiType);
 
-    if (this.apiType === 'affichageDynamique') {
-      console.log('✅ Enabling default presentation check for affichageDynamique API');
-      this.defaultCheckEnabled = true;
-    } else {
-      console.log('=== CHECKING IF DEFAULT PRESENTATION ENDPOINT EXISTS (Standard API) ===');
-      try {
-        const testResponse = await this.makeRequest<any>('/version');
-        const defaultEndpoint = this.getEndpoint('/device/default-presentation');
-        
-        if (testResponse.endpoints && testResponse.endpoints[`GET ${defaultEndpoint}`]) {
-          console.log('✅ Default presentation endpoint is available');
-          this.defaultCheckEnabled = true;
-        } else {
-          console.log('⚠️ Default presentation endpoint not available in this API version');
-          this.defaultCheckEnabled = false;
-          return;
-        }
-      } catch (error) {
-        console.log('⚠️ Could not verify endpoint availability, disabling default presentation check');
-        this.defaultCheckEnabled = false;
-        return;
-      }
-    }
-
+    // Activer directement la surveillance pour tous les types d'API
+    this.defaultCheckEnabled = true;
     this.onDefaultPresentationCallback = callback || null;
 
     // Vérification immédiate au démarrage
-    console.log('=== IMMEDIATE DEFAULT PRESENTATION CHECK v2.0.0 ===');
-    this.checkForDefaultPresentation();
+    console.log('=== IMMEDIATE DEFAULT PRESENTATION CHECK v2.0.0 SIMPLE ===');
+    await this.checkForDefaultPresentation();
 
     // Surveillance toutes les 10 secondes
     this.defaultCheckInterval = setInterval(async () => {
@@ -329,7 +329,7 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v2.0.0 ===');
+      console.log('=== CHECKING FOR ASSIGNED PRESENTATION v2.0.0 SIMPLE ===');
       const endpoint = this.getEndpoint('/device/assigned-presentation');
       console.log('Using endpoint:', endpoint);
       
@@ -356,16 +356,7 @@ class ApiService {
         return null;
       }
     } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('Endpoint not found') || error.message.includes('404')) {
-          console.log('⚠️ Assignment endpoint not available on this server version - disabling assignment check');
-          this.assignmentCheckEnabled = false;
-          this.stopAssignmentCheck();
-          return null;
-        }
-      }
-      
-      console.log('Assignment check failed:', error);
+      console.error('Assignment check error:', error);
       return null;
     }
   }
@@ -381,16 +372,17 @@ class ApiService {
         return null;
       }
 
-      console.log('=== CHECKING FOR DEFAULT PRESENTATION v2.0.0 ===');
+      console.log('=== CHECKING FOR DEFAULT PRESENTATION v2.0.0 SIMPLE ===');
       const endpoint = this.getEndpoint('/device/default-presentation');
       console.log('Using endpoint:', endpoint);
+      console.log('Device ID:', this.deviceId);
       
       const response = await this.makeRequest<ApiResponse<DefaultPresentation>>(endpoint);
       console.log('Default presentation response:', response);
       
       const defaultPresentation = response.default_presentation;
 
-      // SOLUTION SIMPLIFIÉE: Vérification minimale
+      // SOLUTION SIMPLIFIÉE: Accepter toute réponse non-null
       if (defaultPresentation) {
         console.log('✅ Found default presentation:', defaultPresentation);
         
@@ -462,7 +454,7 @@ class ApiService {
 
   async setServerUrl(url: string): Promise<boolean> {
     try {
-      console.log('=== SETTING SERVER URL v2.0.0 ===');
+      console.log('=== SETTING SERVER URL v2.0.0 SIMPLE ===');
       console.log('Input URL:', url);
       
       let cleanUrl = url.replace(/\/+$/, '');
@@ -501,7 +493,7 @@ class ApiService {
       if (connectionOk) {
         const registrationOk = await this.registerDevice();
         if (registrationOk) {
-          console.log('=== SERVER SETUP COMPLETE v2.0.0 ===');
+          console.log('=== SERVER SETUP COMPLETE v2.0.0 SIMPLE ===');
           return true;
         } else {
           console.warn('Connection OK but registration failed');
@@ -525,6 +517,15 @@ class ApiService {
     return this.deviceId;
   }
 
+  getDeviceName(): string {
+    return this.deviceName;
+  }
+
+  async setDeviceName(name: string): Promise<void> {
+    this.deviceName = name;
+    await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_NAME, name);
+  }
+
   isDeviceRegistered(): boolean {
     return this.isRegistered;
   }
@@ -533,6 +534,9 @@ class ApiService {
     return this.lastConnectionError;
   }
 
+  /**
+   * Obtient l'URL de base du serveur pour les images
+   */
   private getBaseServerUrl(): string {
     if (!this.baseUrl) return '';
     
@@ -552,10 +556,12 @@ class ApiService {
     return baseServerUrl;
   }
 
+  /**
+   * Nettoie une réponse PHP de manière robuste
+   */
   private cleanPhpResponse(responseText: string): string {
     console.log('=== CLEANING PHP RESPONSE ===');
     console.log('Original length:', responseText.length);
-    console.log('First 500 chars:', responseText.substring(0, 500));
     
     let cleanedResponse = responseText.trim();
     
@@ -607,6 +613,9 @@ class ApiService {
     return cleanedResponse;
   }
 
+  /**
+   * Extraction JSON avec gestion d'erreurs améliorée
+   */
   private extractJsonFromResponse(responseText: string): any {
     console.log('=== EXTRACTING JSON FROM RESPONSE ===');
     
@@ -658,6 +667,9 @@ class ApiService {
     }
   }
 
+  /**
+   * Crée un timeout manuel
+   */
   private createTimeoutPromise(timeoutMs: number): Promise<never> {
     return new Promise((_, reject) => {
       setTimeout(() => {
@@ -666,6 +678,9 @@ class ApiService {
     });
   }
 
+  /**
+   * Effectue une requête avec timeout manuel
+   */
   private async fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 30000): Promise<Response> {
     const enhancedOptions: RequestInit = {
       ...options,
@@ -693,7 +708,7 @@ class ApiService {
     const finalEndpoint = this.getEndpoint(cleanEndpoint);
     const url = `${this.baseUrl}${finalEndpoint}`;
     
-    console.log('=== API REQUEST v2.0.0 ===');
+    console.log('=== API REQUEST v2.0.0 SIMPLE ===');
     console.log('URL:', url);
     console.log('Method:', options.method || 'GET');
     
@@ -735,7 +750,7 @@ class ApiService {
       const responseText = await response.text();
       console.log('=== RAW RESPONSE ===');
       console.log('Length:', responseText.length);
-      console.log('First 1000 chars:', responseText.substring(0, 1000));
+      console.log('First 500 chars:', responseText.substring(0, 500));
 
       if (!response.ok) {
         console.error('=== HTTP ERROR ===');
@@ -747,15 +762,6 @@ class ApiService {
         if (response.status === 500) {
           throw new Error('Erreur serveur interne (500). Vérifiez les logs PHP de votre serveur.');
         } else if (response.status === 404) {
-          try {
-            const errorData = this.extractJsonFromResponse(responseText);
-            if (errorData.available_endpoints) {
-              const endpointsList = Object.keys(errorData.available_endpoints).join(', ');
-              throw new Error(`Endpoint non trouvé: ${finalEndpoint}\n\nEndpoints disponibles: ${endpointsList}`);
-            }
-          } catch (parseError) {
-            // Si on ne peut pas parser le JSON d'erreur, utiliser un message générique
-          }
           throw new Error(`Endpoint non trouvé: ${url}`);
         } else {
           throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
@@ -790,7 +796,7 @@ class ApiService {
 
   async testConnection(): Promise<boolean> {
     try {
-      console.log('=== TESTING CONNECTION v2.0.0 ===');
+      console.log('=== TESTING CONNECTION v2.0.0 SIMPLE ===');
       console.log('Testing URL:', this.baseUrl);
       
       if (!this.baseUrl) {
@@ -847,14 +853,14 @@ class ApiService {
 
   async registerDevice(): Promise<boolean> {
     try {
-      console.log('=== REGISTERING DEVICE v2.0.0 ===');
+      console.log('=== REGISTERING DEVICE v2.0.0 SIMPLE ===');
       console.log('Device ID:', this.deviceId);
       console.log('Server URL:', this.baseUrl);
       console.log('API Type:', this.apiType);
       
       const deviceInfo: DeviceRegistration = {
         device_id: this.deviceId,
-        name: `Fire TV Stick - ${this.deviceId.split('_').pop()}`,
+        name: this.deviceName || `Fire TV Stick - ${this.deviceId.split('_').pop()}`,
         type: 'firetv',
         platform: 'android',
         user_agent: 'PresentationKiosk/2.0.0 (Android; FireTV)',
@@ -892,7 +898,7 @@ class ApiService {
           await AsyncStorage.setItem(STORAGE_KEYS.ENROLLMENT_TOKEN, response.token);
         }
 
-        console.log('=== DEVICE REGISTERED SUCCESSFULLY v2.0.0 ===');
+        console.log('=== DEVICE REGISTERED SUCCESSFULLY v2.0.0 SIMPLE ===');
         console.log('Device ID:', this.deviceId);
         console.log('Token:', response.token);
         return true;
@@ -917,7 +923,7 @@ class ApiService {
 
   async getPresentations(): Promise<Presentation[]> {
     try {
-      console.log('=== FETCHING PRESENTATIONS v2.0.0 ===');
+      console.log('=== FETCHING PRESENTATIONS v2.0.0 SIMPLE ===');
       
       if (!this.isRegistered) {
         console.log('Device not registered, attempting registration...');
@@ -949,7 +955,7 @@ class ApiService {
 
   async getPresentation(id: number): Promise<PresentationDetails> {
     try {
-      console.log('=== FETCHING PRESENTATION DETAILS v2.0.0 ===');
+      console.log('=== FETCHING PRESENTATION DETAILS v2.0.0 SIMPLE ===');
       console.log('Presentation ID:', id);
       
       if (!this.isRegistered) {
@@ -1004,7 +1010,7 @@ class ApiService {
         
         const duration = parseInt(slide.duration?.toString() || '5');
         
-        console.log('=== SLIDE DURATION DEBUG v2.0.0 ===');
+        console.log('=== SLIDE DURATION DEBUG v2.0.0 SIMPLE ===');
         console.log('Slide ID:', slide.id);
         console.log('Raw duration from DB:', slide.duration);
         console.log('Parsed duration:', duration);
@@ -1022,7 +1028,7 @@ class ApiService {
         throw new Error('Aucune slide valide trouvée pour cette présentation');
       }
 
-      console.log('=== VALID SLIDES WITH DURATIONS v2.0.0 ===');
+      console.log('=== VALID SLIDES WITH DURATIONS v2.0.0 SIMPLE ===');
       console.log('Count:', validSlides.length);
       validSlides.forEach((slide, index) => {
         console.log(`Slide ${index + 1}:`, {
@@ -1068,6 +1074,7 @@ class ApiService {
   async getDebugInfo(): Promise<{
     serverUrl: string;
     deviceId: string;
+    deviceName: string;
     isRegistered: boolean;
     hasToken: boolean;
     assignmentCheckActive: boolean;
@@ -1077,10 +1084,12 @@ class ApiService {
     apiType: string;
     lastConnectionError: string;
     connectionAttempts: number;
+    localIpAddress: string | null;
   }> {
     return {
       serverUrl: this.baseUrl,
       deviceId: this.deviceId,
+      deviceName: this.deviceName,
       isRegistered: this.isRegistered,
       hasToken: !!this.enrollmentToken,
       assignmentCheckActive: !!this.assignmentCheckInterval,
@@ -1089,12 +1098,13 @@ class ApiService {
       defaultCheckEnabled: this.defaultCheckEnabled,
       apiType: this.apiType,
       lastConnectionError: this.lastConnectionError,
-      connectionAttempts: this.connectionAttempts
+      connectionAttempts: this.connectionAttempts,
+      localIpAddress: this.localIpAddress
     };
   }
 
   async resetDevice(): Promise<void> {
-    console.log('=== RESETTING DEVICE v2.0.0 ===');
+    console.log('=== RESETTING DEVICE v2.0.0 SIMPLE ===');
     
     this.stopAssignmentCheck();
     this.stopDefaultPresentationCheck();

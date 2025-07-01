@@ -1,4 +1,4 @@
-import { apiService, DeviceStatus } from './ApiService';
+import { apiService } from './ApiService';
 
 // Interface pour le service WebSocket
 interface WebSocketService {
@@ -193,7 +193,6 @@ class WebSocketServiceImpl implements WebSocketService {
   private handleCommand(command: any): void {
     console.log('WebSocket: Received command', command);
     // Ici, vous pouvez implémenter la logique pour traiter les commandes
-    // Par exemple, en utilisant le service de statut pour exécuter la commande
   }
 }
 
@@ -202,11 +201,16 @@ let webSocketService: WebSocketService | null = null;
 
 // Fonction pour initialiser le service WebSocket
 export async function initWebSocketService(): Promise<boolean> {
-  if (!webSocketService) {
-    webSocketService = new WebSocketServiceImpl();
+  try {
+    if (!webSocketService) {
+      webSocketService = new WebSocketServiceImpl();
+    }
+    
+    return await webSocketService.connect();
+  } catch (error) {
+    console.error('Failed to initialize WebSocket service:', error);
+    return false;
   }
-  
-  return webSocketService.connect();
 }
 
 // Fonction pour récupérer l'instance du service WebSocket

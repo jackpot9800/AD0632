@@ -43,7 +43,7 @@ export default function HomeScreen() {
   }, []);
 
   const initializeApp = async () => {
-    console.log('=== STARTING APP INITIALIZATION v2.0.0 ===');
+    console.log('=== STARTING APP INITIALIZATION v2.0.0 SIMPLE ===');
     setLoading(true);
     
     await apiService.initialize();
@@ -66,7 +66,7 @@ export default function HomeScreen() {
     }
     
     setLoading(false);
-    console.log('=== APP INITIALIZATION COMPLETE v2.0.0 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v2.0.0 SIMPLE ===');
   };
 
   const initializeStatusService = async () => {
@@ -120,7 +120,7 @@ export default function HomeScreen() {
 
   // Surveillance continue toutes les 10 secondes
   const startContinuousSurveillance = () => {
-    console.log('=== STARTING CONTINUOUS SURVEILLANCE v2.0.0 ===');
+    console.log('=== STARTING CONTINUOUS SURVEILLANCE v2.0.0 SIMPLE ===');
     
     // Vérification immédiate
     checkAndLaunchPresentations();
@@ -132,7 +132,7 @@ export default function HomeScreen() {
     
     surveillanceIntervalRef.current = setInterval(() => {
       if (isAppActiveRef.current) {
-        console.log('=== SURVEILLANCE TICK v2.0.0 ===', new Date().toLocaleTimeString());
+        console.log('=== SURVEILLANCE TICK v2.0.0 SIMPLE ===', new Date().toLocaleTimeString());
         checkAndLaunchPresentations();
       }
     }, 10000);
@@ -143,7 +143,7 @@ export default function HomeScreen() {
   // FONCTION PRINCIPALE : Vérification et lancement automatique
   const checkAndLaunchPresentations = async () => {
     try {
-      console.log('=== CHECKING PRESENTATIONS v2.0.0 ===');
+      console.log('=== CHECKING PRESENTATIONS v2.0.0 SIMPLE ===');
       console.log('Device ID:', apiService.getDeviceId());
       
       // 1. Vérifier les assignations (priorité absolue)
@@ -165,7 +165,7 @@ export default function HomeScreen() {
       console.log('🔍 Checking for default presentation...');
       const defaultPres = await apiService.checkForDefaultPresentation();
       
-      console.log('=== DEFAULT PRESENTATION RESPONSE v2.0.0 ===');
+      console.log('=== DEFAULT PRESENTATION RESPONSE v2.0.0 SIMPLE ===');
       console.log('Response:', defaultPres);
       
       if (defaultPres) {
@@ -191,7 +191,7 @@ export default function HomeScreen() {
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.0.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.0.0 SIMPLE ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -208,7 +208,7 @@ export default function HomeScreen() {
 
   // LANCEMENT SIMPLIFIÉ
   const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION v2.0.0 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION v2.0.0 SIMPLE ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
@@ -238,7 +238,7 @@ export default function HomeScreen() {
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v2.0.0 ===');
+    console.log('=== MANUAL REFRESH v2.0.0 SIMPLE ===');
     setRefreshing(true);
     
     // RÉINITIALISER complètement les tentatives de lancement
