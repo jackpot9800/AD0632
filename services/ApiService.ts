@@ -224,7 +224,7 @@ class ApiService {
 
     this.onAssignedPresentationCallback = callback || null;
 
-    // Vérification immédiate au démarrage
+    // Vérification immédiate
     this.checkForAssignedPresentation();
 
     // Surveillance toutes les 10 secondes
