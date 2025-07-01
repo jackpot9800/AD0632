@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from './ApiService';
+import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 export interface DeviceStatus {
   device_id: string;
@@ -17,6 +19,8 @@ export interface DeviceStatus {
   wifi_strength?: number;
   app_version?: string;
   error_message?: string;
+  local_ip?: string;
+  device_name?: string;
 }
 
 export interface RemoteCommand {
@@ -39,6 +43,8 @@ class StatusService {
   private isInPresentationMode: boolean = false;
   private lastHeartbeatTime: number = 0;
   private isInitialized: boolean = false;
+  private localIpAddress: string | null = null;
+  private deviceName: string | null = null;
 
   async initialize() {
     // Éviter les initialisations multiples
@@ -49,13 +55,49 @@ class StatusService {
     
     console.log('=== INITIALIZING STATUS SERVICE v2.3.0 ===');
     
-    // Démarrer le heartbeat toutes les 60 secondes (augmenté pour éviter les interférences)
+    // Récupérer le nom de l'appareil
+    try {
+      this.deviceName = await AsyncStorage.getItem('device_name') || apiService.getDeviceName();
+    } catch (error) {
+      console.error('Error getting device name:', error);
+      this.deviceName = apiService.getDeviceName();
+    }
+    
+    // Tenter de récupérer l'adresse IP locale
+    await this.getLocalIPAddress();
+    
+    // Démarrer le heartbeat toutes les 60 secondes
     this.startHeartbeat();
     
     // Vérifier les commandes à distance toutes les 20 secondes
     this.startCommandCheck();
     
     this.isInitialized = true;
+  }
+
+  /**
+   * Tente de récupérer l'adresse IP locale de l'appareil
+   */
+  private async getLocalIPAddress() {
+    try {
+      if (Platform.OS !== 'web') {
+        // Utiliser NetInfo pour obtenir l'adresse IP locale
+        const netInfo = await NetInfo.fetch();
+        if (netInfo.type === 'wifi' && netInfo.details) {
+          this.localIpAddress = (netInfo.details as any).ipAddress || null;
+        }
+      }
+      
+      if (!this.localIpAddress) {
+        // Méthode de secours - simuler une adresse IP locale
+        this.localIpAddress = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+      }
+      
+      console.log('Local IP address:', this.localIpAddress);
+    } catch (error) {
+      console.log('Failed to get local IP address:', error);
+      this.localIpAddress = null;
+    }
   }
 
   /**

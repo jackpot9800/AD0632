@@ -95,7 +95,6 @@ class ApiService {
   private lastConnectionError: string = '';
   private connectionAttempts: number = 0;
   private localIpAddress: string | null = null;
-  private externalIpAddress: string | null = null;
 
   async initialize() {
     try {

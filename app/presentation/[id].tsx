@@ -410,7 +410,7 @@ export default function PresentationScreen() {
         {auto_play === 'true' && (
           <View style={styles.autoPlayIndicator}>
             <Play size={16} color="#ffffff" />
-            <Text style={styles.autoPlayText}>AUTO-PLAY</Text>
+            <Text style={styles.autoPlayText}>AUTO</Text>
           </View>
         )}
 
