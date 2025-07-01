@@ -25,13 +25,8 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // États pour contrôler les surveillances - VERSION FINALE CORRIGÉE v1.4.2
-  const [assignmentCheckStarted, setAssignmentCheckStarted] = useState(false);
-  const [defaultCheckStarted, setDefaultCheckStarted] = useState(false);
-  
-  // Refs pour éviter les lancements multiples - SIMPLIFIÉS v1.4.2
-  const initializationCompleteRef = useRef(false);
-  const defaultPresentationLaunchedRef = useRef(false);
+  // SOLUTION ULTRA SIMPLE v1.5.0 - Un seul flag pour éviter les lancements multiples
+  const autoLaunchExecutedRef = useRef(false);
 
   useEffect(() => {
     initializeApp();
@@ -43,12 +38,7 @@ export default function HomeScreen() {
   }, []);
 
   const initializeApp = async () => {
-    if (initializationCompleteRef.current) {
-      console.log('=== INITIALIZATION ALREADY COMPLETE v1.4.2 ===');
-      return;
-    }
-
-    console.log('=== STARTING APP INITIALIZATION v1.4.2 ===');
+    console.log('=== STARTING APP INITIALIZATION v1.5.0 ULTRA SIMPLE ===');
     setLoading(true);
     
     await apiService.initialize();
@@ -59,28 +49,19 @@ export default function HomeScreen() {
     if (!serverUrl) {
       setConnectionStatus('not_configured');
       setLoading(false);
-      initializationCompleteRef.current = true;
       return;
     }
     
     await checkConnection();
     await loadPresentations();
     
+    // SOLUTION ULTRA SIMPLE : Vérifier et lancer automatiquement
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== DEVICE IS REGISTERED AND CONNECTED v1.4.2 ===');
-      
-      // Démarrer les surveillances avec vérification immédiate
-      if (!assignmentCheckStarted) {
-        await startAssignmentMonitoring();
-      }
-      if (!defaultCheckStarted) {
-        await startDefaultPresentationMonitoring();
-      }
+      await checkAndLaunchDefaultPresentation();
     }
     
     setLoading(false);
-    initializationCompleteRef.current = true;
-    console.log('=== APP INITIALIZATION COMPLETE v1.4.2 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v1.5.0 ===');
   };
 
   const initializeStatusService = async () => {
@@ -132,99 +113,53 @@ export default function HomeScreen() {
     }
   };
 
-  const startAssignmentMonitoring = async () => {
-    if (assignmentCheckStarted) {
-      console.log('=== ASSIGNMENT CHECK ALREADY STARTED v1.4.2 ===');
+  // SOLUTION ULTRA SIMPLE v1.5.0 : Une seule fonction qui fait tout
+  const checkAndLaunchDefaultPresentation = async () => {
+    if (autoLaunchExecutedRef.current) {
+      console.log('=== AUTO LAUNCH ALREADY EXECUTED v1.5.0 ===');
       return;
     }
 
-    console.log('=== STARTING ASSIGNMENT MONITORING v1.4.2 ===');
-    setAssignmentCheckStarted(true);
+    console.log('=== CHECKING FOR DEFAULT PRESENTATION v1.5.0 ===');
     
     try {
-      await apiService.startAssignmentCheck((assigned: AssignedPresentation) => {
-        console.log('=== ASSIGNED PRESENTATION DETECTED v1.4.2 ===');
+      // Vérifier d'abord les assignations (priorité)
+      const assigned = await apiService.checkForAssignedPresentation();
+      if (assigned) {
+        console.log('=== FOUND ASSIGNED PRESENTATION - LAUNCHING v1.5.0 ===');
         setAssignedPresentation(assigned);
+        autoLaunchExecutedRef.current = true;
         
-        // Réinitialiser le flag de présentation par défaut car l'assignation a priorité
-        defaultPresentationLaunchedRef.current = false;
-        
-        // Lancement IMMÉDIAT des présentations assignées (priorité absolue)
         setTimeout(() => {
           launchAssignedPresentation(assigned);
         }, 1000);
-      });
-
-      // Vérifier s'il y a une assignation existante IMMÉDIATEMENT
-      const existing = await apiService.checkForAssignedPresentation();
-      if (existing) {
-        console.log('=== FOUND EXISTING ASSIGNED PRESENTATION v1.4.2 ===');
-        setAssignedPresentation(existing);
-        
-        // Réinitialiser le flag de présentation par défaut
-        defaultPresentationLaunchedRef.current = false;
-        
-        setTimeout(() => {
-          launchAssignedPresentation(existing);
-        }, 1500);
-      }
-    } catch (error) {
-      console.log('Assignment monitoring failed:', error);
-      setAssignmentCheckStarted(false);
-    }
-  };
-
-  const startDefaultPresentationMonitoring = async () => {
-    if (defaultCheckStarted) {
-      console.log('=== DEFAULT CHECK ALREADY STARTED v1.4.2 ===');
-      return;
-    }
-
-    console.log('=== STARTING DEFAULT PRESENTATION MONITORING v1.4.2 ===');
-    setDefaultCheckStarted(true);
-    
-    try {
-      // CORRECTION CRITIQUE v1.4.2: Vérification IMMÉDIATE au démarrage
-      const existingDefault = await apiService.checkForDefaultPresentation();
-      if (existingDefault && !assignedPresentation && !defaultPresentationLaunchedRef.current) {
-        console.log('=== FOUND EXISTING DEFAULT PRESENTATION - LAUNCHING IMMEDIATELY v1.4.2 ===');
-        console.log('Default presentation ID:', existingDefault.presentation_id);
-        
-        setDefaultPresentation(existingDefault);
-        defaultPresentationLaunchedRef.current = true;
-        
-        // Lancement IMMÉDIAT sans délai
-        launchDefaultPresentation(existingDefault);
+        return;
       }
 
-      // Démarrer la surveillance continue (toutes les 20 secondes)
-      await apiService.startDefaultPresentationCheck((defaultPres: DefaultPresentation) => {
-        console.log('=== DEFAULT PRESENTATION DETECTED IN MONITORING v1.4.2 ===');
+      // Si pas d'assignation, vérifier la présentation par défaut
+      const defaultPres = await apiService.checkForDefaultPresentation();
+      if (defaultPres && defaultPres.presentation_id > 0) {
+        console.log('=== FOUND DEFAULT PRESENTATION - LAUNCHING AUTOMATICALLY v1.5.0 ===');
         console.log('Default presentation ID:', defaultPres.presentation_id);
-        console.log('Assigned presentation exists:', !!assignedPresentation);
-        console.log('Already launched:', defaultPresentationLaunchedRef.current);
+        console.log('Default presentation name:', defaultPres.presentation_name);
         
         setDefaultPresentation(defaultPres);
+        autoLaunchExecutedRef.current = true;
         
-        // Lancer seulement si pas d'assignation ET pas encore lancé
-        if (!assignedPresentation && !defaultPresentationLaunchedRef.current) {
-          console.log('=== LAUNCHING DEFAULT PRESENTATION FROM MONITORING v1.4.2 ===');
-          defaultPresentationLaunchedRef.current = true;
-          launchDefaultPresentation(defaultPres);
-        } else {
-          console.log('=== DEFAULT PRESENTATION AVAILABLE BUT NOT LAUNCHING v1.4.2 ===');
-          console.log('Reason: assigned =', !!assignedPresentation, ', already launched =', defaultPresentationLaunchedRef.current);
-        }
-      });
-
+        // LANCEMENT AUTOMATIQUE EN BOUCLE INFINIE
+        setTimeout(() => {
+          launchDefaultPresentationInfiniteLoop(defaultPres);
+        }, 1500);
+      } else {
+        console.log('=== NO DEFAULT PRESENTATION FOUND v1.5.0 ===');
+      }
     } catch (error) {
-      console.log('Default presentation monitoring failed:', error);
-      setDefaultCheckStarted(false);
+      console.error('Error checking presentations:', error);
     }
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.4.2 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.5.0 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -239,64 +174,39 @@ export default function HomeScreen() {
     router.push(url);
   };
 
-  const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION v1.4.2 ===');
+  // SOLUTION ULTRA SIMPLE v1.5.0 : Lancement en boucle infinie
+  const launchDefaultPresentationInfiniteLoop = (defaultPres: DefaultPresentation) => {
+    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v1.5.0 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
     const params = new URLSearchParams({
       auto_play: 'true',
-      loop_mode: 'true',
+      loop_mode: 'true', // BOUCLE INFINIE
       assigned: 'false',
       default: 'true'
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('Navigating to default presentation:', url);
+    console.log('Navigating to default presentation with infinite loop:', url);
     router.push(url);
   };
 
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v1.4.2 ===');
+    console.log('=== MANUAL REFRESH v1.5.0 ===');
     setRefreshing(true);
     
-    // CORRECTION CRITIQUE v1.4.2: Réinitialiser les flags lors du refresh
-    defaultPresentationLaunchedRef.current = false;
+    // RÉINITIALISER le flag pour permettre un nouveau lancement automatique
+    autoLaunchExecutedRef.current = false;
     
     await checkConnection();
     await loadPresentations();
     
-    // Vérifier à nouveau les présentations après le refresh
+    // RELANCER la vérification automatique après le refresh
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      console.log('=== CHECKING PRESENTATIONS AFTER REFRESH v1.4.2 ===');
-      
-      try {
-        // Vérifier d'abord les assignations
-        const existingAssigned = await apiService.checkForAssignedPresentation();
-        if (existingAssigned) {
-          console.log('=== FOUND ASSIGNED PRESENTATION AFTER REFRESH v1.4.2 ===');
-          setAssignedPresentation(existingAssigned);
-          setTimeout(() => {
-            launchAssignedPresentation(existingAssigned);
-          }, 1000);
-        } else {
-          // Si pas d'assignation, vérifier la présentation par défaut
-          const existingDefault = await apiService.checkForDefaultPresentation();
-          if (existingDefault && !defaultPresentationLaunchedRef.current) {
-            console.log('=== FOUND DEFAULT PRESENTATION AFTER REFRESH - LAUNCHING IMMEDIATELY v1.4.2 ===');
-            setDefaultPresentation(existingDefault);
-            defaultPresentationLaunchedRef.current = true;
-            
-            setTimeout(() => {
-              launchDefaultPresentation(existingDefault);
-            }, 1000);
-          }
-        }
-      } catch (error) {
-        console.log('Presentation check after refresh failed:', error);
-      }
+      await checkAndLaunchDefaultPresentation();
     }
     
     setRefreshing(false);
@@ -357,7 +267,7 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 1.4.2 - CORRECTION DÉFINITIVE Lancement automatique • ID: {apiService.getDeviceId()}
+          Version 1.5.0 - SOLUTION ULTRA SIMPLE Lancement automatique • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
@@ -422,8 +332,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.assignedCard}
           onPress={() => {
-            defaultPresentationLaunchedRef.current = true;
-            launchDefaultPresentation(defaultPresentation);
+            launchDefaultPresentationInfiniteLoop(defaultPresentation);
           }}
           activeOpacity={0.8}
         >
@@ -450,7 +359,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                {assignedPresentation ? '✅ Disponible manuellement' : '🚀 Lancement automatique IMMÉDIAT v1.4.2'}
+                🔄 BOUCLE INFINIE AUTOMATIQUE v1.5.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -528,7 +437,7 @@ export default function HomeScreen() {
         >
           <RefreshCw size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 1.4.2 - CORRECTION DÉFINITIVE Lancement automatique</Text>
+          <Text style={styles.loadingSubtext}>Version 1.5.0 - SOLUTION ULTRA SIMPLE</Text>
         </LinearGradient>
       </View>
     );
@@ -551,7 +460,7 @@ export default function HomeScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>Kiosque de Présentations</Text>
               <Text style={styles.subtitle}>
-                Fire TV Stick - Version 1.4.2 CORRECTION DÉFINITIVE Lancement automatique
+                Fire TV Stick - Version 1.5.0 SOLUTION ULTRA SIMPLE
               </Text>
               
               <TouchableOpacity
@@ -582,7 +491,7 @@ export default function HomeScreen() {
               Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Lecture automatique en boucle • Lancement automatique CORRIGÉ v1.4.2
+              🔄 Lecture automatique en boucle • SOLUTION ULTRA SIMPLE v1.5.0
             </Text>
           </View>
           
