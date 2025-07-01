@@ -382,7 +382,7 @@ export default function PresentationScreen() {
           <Image
             source={{ uri: currentSlide.image_url }}
             style={styles.slideImage}
-            resizeMode="contain"
+            resizeMode="cover"
             onError={() => handleImageError(currentSlide.id)}
           />
         )}
@@ -575,12 +575,18 @@ const styles = StyleSheet.create({
   },
   slideContainer: {
     flex: 1,
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   slideImage: {
-    width: width,
-    height: height,
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   imageErrorContainer: {
     flex: 1,
