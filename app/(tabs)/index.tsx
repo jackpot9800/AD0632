@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity, Zap, Chrome as Home, Bug } from 'lucide-react-native';
+import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Home } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 
@@ -25,19 +25,10 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // SOLUTION DÉFINITIVE v2.4.0 - Surveillance active avec debug complet
+  // SOLUTION SIMPLE v1.7.0 - Retour à la base
   const surveillanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoLaunchAttemptedRef = useRef<Set<number>>(new Set());
   const isAppActiveRef = useRef(true);
-  const lastCheckTimeRef = useRef<number>(0);
-  const forceCheckRef = useRef<boolean>(false);
-  
-  // NOUVEAU v2.4.0 - États de surveillance visibles avec debug
-  const [surveillanceActive, setSurveillanceActive] = useState(false);
-  const [lastSurveillanceCheck, setLastSurveillanceCheck] = useState<Date | null>(null);
-  const [surveillanceMessage, setSurveillanceMessage] = useState<string>('Initialisation...');
-  const [autoLaunchStatus, setAutoLaunchStatus] = useState<string>('En attente...');
-  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     initializeApp();
@@ -52,21 +43,16 @@ export default function HomeScreen() {
   }, []);
 
   const initializeApp = async () => {
-    console.log('=== STARTING APP INITIALIZATION v2.4.0 DEBUG COMPLET ===');
+    console.log('=== STARTING APP INITIALIZATION v1.7.0 SIMPLE ===');
     setLoading(true);
-    setSurveillanceMessage('Initialisation de l\'application...');
-    setDebugInfo('Démarrage de l\'application...');
     
     await apiService.initialize();
     
     const serverUrl = apiService.getServerUrl();
     console.log('Current server URL:', serverUrl);
-    setDebugInfo(`URL serveur: ${serverUrl || 'Non configuré'}`);
     
     if (!serverUrl) {
       setConnectionStatus('not_configured');
-      setSurveillanceMessage('Serveur non configuré');
-      setDebugInfo('❌ Serveur non configuré');
       setLoading(false);
       return;
     }
@@ -74,13 +60,13 @@ export default function HomeScreen() {
     await checkConnection();
     await loadPresentations();
     
-    // DÉMARRER LA SURVEILLANCE ACTIVE AVEC DEBUG COMPLET v2.4.0
+    // DÉMARRER LA SURVEILLANCE SIMPLE
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startActiveSurveillanceWithDebug();
+      startSimpleSurveillance();
     }
     
     setLoading(false);
-    console.log('=== APP INITIALIZATION COMPLETE v2.4.0 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v1.7.0 ===');
   };
 
   const initializeStatusService = async () => {
@@ -96,24 +82,16 @@ export default function HomeScreen() {
     const serverUrl = apiService.getServerUrl();
     if (!serverUrl) {
       setConnectionStatus('not_configured');
-      setSurveillanceMessage('Serveur non configuré');
-      setDebugInfo('❌ Serveur non configuré');
       return;
     }
     
     setConnectionStatus('testing');
-    setSurveillanceMessage('Test de connexion...');
-    setDebugInfo('🔍 Test de connexion...');
     try {
       const isConnected = await apiService.testConnection();
       setConnectionStatus(isConnected ? 'connected' : 'disconnected');
-      setSurveillanceMessage(isConnected ? 'Connexion établie' : 'Connexion échouée');
-      setDebugInfo(isConnected ? '✅ Connexion établie' : '❌ Connexion échouée');
     } catch (error) {
       console.error('Connection test error:', error);
       setConnectionStatus('disconnected');
-      setSurveillanceMessage('Erreur de connexion');
-      setDebugInfo(`❌ Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`);
     }
   };
 
@@ -121,22 +99,14 @@ export default function HomeScreen() {
     const serverUrl = apiService.getServerUrl();
     if (!serverUrl) {
       setConnectionStatus('not_configured');
-      setSurveillanceMessage('Serveur non configuré');
-      setDebugInfo('❌ Serveur non configuré');
       return;
     }
     
     try {
-      setSurveillanceMessage('Chargement des présentations...');
-      setDebugInfo('📥 Chargement des présentations...');
       const data = await apiService.getPresentations();
       setPresentations(data);
-      setSurveillanceMessage('Présentations chargées');
-      setDebugInfo(`✅ ${data.length} présentations chargées`);
     } catch (error) {
       console.error('Error loading presentations:', error);
-      setSurveillanceMessage('Erreur de chargement');
-      setDebugInfo(`❌ Erreur chargement: ${error instanceof Error ? error.message : 'Inconnue'}`);
       Alert.alert(
         'Erreur de connexion',
         `Impossible de charger les présentations`,
@@ -148,164 +118,70 @@ export default function HomeScreen() {
     }
   };
 
-  // SOLUTION DÉFINITIVE v2.4.0 : Surveillance active avec debug complet
-  const startActiveSurveillanceWithDebug = () => {
-    console.log('=== STARTING ACTIVE SURVEILLANCE WITH DEBUG v2.4.0 ===');
-    
-    setSurveillanceActive(true);
-    setSurveillanceMessage('🔄 Surveillance active - Recherche de présentations...');
-    setDebugInfo('🔄 Surveillance démarrée');
+  // SOLUTION SIMPLE v1.7.0 : Surveillance basique toutes les 10 secondes
+  const startSimpleSurveillance = () => {
+    console.log('=== STARTING SIMPLE SURVEILLANCE v1.7.0 ===');
     
     // Vérification immédiate
-    performDebuggedCheck();
+    checkAndLaunchPresentations();
     
-    // Surveillance continue toutes les 2 secondes avec debug complet
+    // Surveillance simple toutes les 10 secondes
     if (surveillanceIntervalRef.current) {
       clearInterval(surveillanceIntervalRef.current);
     }
     
     surveillanceIntervalRef.current = setInterval(() => {
       if (isAppActiveRef.current) {
-        performDebuggedCheck();
+        checkAndLaunchPresentations();
       }
-    }, 2000); // Toutes les 2 secondes avec debug complet
+    }, 10000); // 10 secondes - simple et efficace
     
-    console.log('✅ Active surveillance with debug started (2s interval)');
+    console.log('✅ Simple surveillance started (10s interval)');
   };
 
-  // FONCTION PRINCIPALE v2.4.0 : Vérification avec debug complet
-  const performDebuggedCheck = async () => {
+  // FONCTION SIMPLE v1.7.0 : Vérification basique
+  const checkAndLaunchPresentations = async () => {
     try {
-      const now = Date.now();
-      
-      // Permettre les vérifications forcées ou respecter l'intervalle minimum
-      if (!forceCheckRef.current && (now - lastCheckTimeRef.current < 1500)) {
-        return;
-      }
-      lastCheckTimeRef.current = now;
-      forceCheckRef.current = false;
-      
-      setLastSurveillanceCheck(new Date());
-      setSurveillanceMessage('🔍 Vérification en cours...');
-      setDebugInfo(`🔍 Check ${new Date().toLocaleTimeString()}`);
-      
-      console.log('=== DEBUGGED CHECK v2.4.0 ===');
+      console.log('=== SIMPLE CHECK v1.7.0 ===');
       
       // 1. Vérifier les assignations (priorité absolue)
-      setSurveillanceMessage('🔍 Recherche de présentations assignées...');
-      setDebugInfo('🔍 Vérification assignations...');
       const assigned = await apiService.checkForAssignedPresentation();
       if (assigned) {
         console.log('✅ ASSIGNED PRESENTATION FOUND:', assigned.presentation_id);
         setAssignedPresentation(assigned);
-        setSurveillanceMessage('📌 Présentation assignée trouvée !');
-        setAutoLaunchStatus('🚀 Lancement de la présentation assignée...');
-        setDebugInfo(`✅ Assignée: ${assigned.presentation_name}`);
         
         if (!autoLaunchAttemptedRef.current.has(assigned.presentation_id)) {
-          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION v2.4.0');
+          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION');
           autoLaunchAttemptedRef.current.add(assigned.presentation_id);
           launchAssignedPresentation(assigned);
         }
         return; // Priorité aux assignations
       }
       
-      // 2. Vérifier la présentation par défaut avec debug complet
-      setSurveillanceMessage('🔍 Recherche de présentation par défaut...');
-      setDebugInfo('🔍 Vérification présentation par défaut...');
-      
-      console.log('=== CALLING checkForDefaultPresentation v2.4.0 ===');
+      // 2. Vérifier la présentation par défaut - SIMPLE
       const defaultPres = await apiService.checkForDefaultPresentation();
-      console.log('=== DEFAULT PRESENTATION CHECK RESULT v2.4.0 ===');
-      console.log('Default presentation data:', defaultPres);
-      
-      // VALIDATION STRICTE RENFORCÉE v2.4.0 avec debug complet
-      console.log('=== VALIDATION DEBUG v2.4.0 ===');
-      const hasDefaultPres = !!defaultPres;
-      const hasId = !!(defaultPres?.presentation_id);
-      const idGreaterThanZero = (defaultPres?.presentation_id || 0) > 0;
-      const hasName = !!(defaultPres?.presentation_name);
-      const nameNotEmpty = !!(defaultPres?.presentation_name?.trim());
-      const nameLength = defaultPres?.presentation_name?.trim()?.length || 0;
-      
-      console.log('Validation steps:', {
-        hasDefaultPres,
-        hasId,
-        idGreaterThanZero,
-        hasName,
-        nameNotEmpty,
-        nameLength
-      });
-      
-      setDebugInfo(`Debug: ID=${defaultPres?.presentation_id}, Nom="${defaultPres?.presentation_name}", Longueur=${nameLength}`);
-      
-      if (hasDefaultPres && hasId && idGreaterThanZero && hasName && nameNotEmpty && nameLength > 0) {
-        console.log('✅ ✅ ✅ VALID DEFAULT PRESENTATION FOUND v2.4.0 ✅ ✅ ✅');
-        console.log('VALID DEFAULT PRESENTATION DETAILS:', {
-          id: defaultPres.presentation_id,
-          name: defaultPres.presentation_name,
-          nameLength: nameLength
-        });
-        
+      if (defaultPres && defaultPres.presentation_id && defaultPres.presentation_id > 0) {
+        console.log('✅ DEFAULT PRESENTATION FOUND:', defaultPres.presentation_id);
         setDefaultPresentation(defaultPres);
-        setSurveillanceMessage('⭐ Présentation par défaut trouvée !');
-        setAutoLaunchStatus(`🔄 Lancement automatique: ${defaultPres.presentation_name}`);
-        setDebugInfo(`✅ Par défaut: ${defaultPres.presentation_name} (ID: ${defaultPres.presentation_id})`);
         
-        // LANCEMENT AUTOMATIQUE GARANTI v2.4.0
+        // LANCEMENT AUTOMATIQUE SIMPLE
         if (!autoLaunchAttemptedRef.current.has(defaultPres.presentation_id)) {
-          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.4.0');
+          console.log('🚀 LAUNCHING DEFAULT PRESENTATION SIMPLE');
           autoLaunchAttemptedRef.current.add(defaultPres.presentation_id);
-          setAutoLaunchStatus('🚀 Démarrage en boucle infinie...');
-          setDebugInfo(`🚀 Lancement: ${defaultPres.presentation_name}`);
-          launchDefaultPresentationInfiniteLoop(defaultPres);
-        } else {
-          setSurveillanceMessage('⚠️ Présentation déjà lancée, surveillance continue...');
-          setAutoLaunchStatus('✅ Présentation en cours de diffusion');
-          setDebugInfo(`✅ Déjà lancée: ${defaultPres.presentation_name}`);
+          launchDefaultPresentation(defaultPres);
         }
       } else {
-        console.log('❌ ❌ ❌ NO VALID DEFAULT PRESENTATION FOUND v2.4.0 ❌ ❌ ❌');
-        console.log('Validation failure details:', {
-          hasDefaultPres,
-          hasId,
-          idGreaterThanZero,
-          hasName,
-          nameNotEmpty,
-          nameLength
-        });
-        
-        setSurveillanceMessage('❌ Aucune présentation par défaut valide');
-        setAutoLaunchStatus('⏳ En attente d\'une présentation...');
+        console.log('❌ No default presentation found');
         setDefaultPresentation(null);
-        
-        // Debug détaillé de l'échec
-        let debugFailure = '❌ Échec validation: ';
-        if (!hasDefaultPres) debugFailure += 'Pas de données, ';
-        if (!hasId) debugFailure += 'Pas d\'ID, ';
-        if (!idGreaterThanZero) debugFailure += 'ID ≤ 0, ';
-        if (!hasName) debugFailure += 'Pas de nom, ';
-        if (!nameNotEmpty) debugFailure += 'Nom vide, ';
-        if (nameLength === 0) debugFailure += 'Longueur = 0';
-        
-        setDebugInfo(debugFailure);
-        
-        // Réinitialiser les tentatives si aucune présentation par défaut valide
-        if (!defaultPres || !defaultPres.presentation_id || defaultPres.presentation_id <= 0) {
-          autoLaunchAttemptedRef.current.clear();
-        }
       }
       
     } catch (error) {
-      console.error('Error in debugged check:', error);
-      setSurveillanceMessage('❌ Erreur lors de la vérification');
-      setAutoLaunchStatus('❌ Erreur de surveillance');
-      setDebugInfo(`❌ Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`);
+      console.error('Error checking presentations:', error);
     }
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.4.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v1.7.0 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -320,44 +196,39 @@ export default function HomeScreen() {
     router.push(url);
   };
 
-  // LANCEMENT EN BOUCLE INFINIE GARANTI v2.4.0
-  const launchDefaultPresentationInfiniteLoop = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.4.0 ===');
+  // LANCEMENT SIMPLE v1.7.0
+  const launchDefaultPresentation = (defaultPres: DefaultPresentation) => {
+    console.log('=== LAUNCHING DEFAULT PRESENTATION SIMPLE v1.7.0 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
     const params = new URLSearchParams({
       auto_play: 'true',
-      loop_mode: 'true', // BOUCLE INFINIE GARANTIE
+      loop_mode: 'true',
       assigned: 'false',
       default: 'true'
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('🔄 Navigating to default presentation with INFINITE LOOP v2.4.0:', url);
+    console.log('🔄 Navigating to default presentation SIMPLE:', url);
     router.push(url);
   };
 
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v2.4.0 ===');
+    console.log('=== MANUAL REFRESH v1.7.0 ===');
     setRefreshing(true);
-    setSurveillanceMessage('🔄 Actualisation manuelle...');
-    setAutoLaunchStatus('🔄 Réinitialisation...');
-    setDebugInfo('🔄 Actualisation manuelle...');
     
     // RÉINITIALISER complètement les tentatives de lancement
     autoLaunchAttemptedRef.current.clear();
-    lastCheckTimeRef.current = 0;
-    forceCheckRef.current = true;
     
     await checkConnection();
     await loadPresentations();
     
     // RELANCER la surveillance après le refresh
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startActiveSurveillanceWithDebug();
+      startSimpleSurveillance();
     }
     
     setRefreshing(false);
@@ -394,10 +265,6 @@ export default function HomeScreen() {
     router.push('/(tabs)/settings');
   };
 
-  const goToPresentations = () => {
-    router.push('/(tabs)/presentations');
-  };
-
   const renderConnectionStatus = () => {
     const statusConfig = {
       connected: { color: '#10b981', text: 'Connecté au serveur', icon: Wifi },
@@ -425,49 +292,9 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 2.4.0 - DEBUG COMPLET • Surveillance 2s • ID: {apiService.getDeviceId()}
+          Version 1.7.0 - SIMPLE ET EFFICACE • Surveillance 10s • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
-    );
-  };
-
-  // NOUVEAU v2.4.0 - Panneau de surveillance avec debug complet
-  const renderSurveillancePanel = () => {
-    if (!surveillanceActive) return null;
-
-    return (
-      <View style={styles.surveillancePanel}>
-        <LinearGradient
-          colors={['#10b981', '#059669']}
-          style={styles.surveillanceGradient}
-        >
-          <View style={styles.surveillanceHeader}>
-            <Activity size={20} color="#ffffff" />
-            <Text style={styles.surveillanceTitle}>Surveillance Active v2.4.0</Text>
-            <Bug size={16} color="#ffffff" />
-          </View>
-          
-          <View style={styles.surveillanceContent}>
-            <Text style={styles.surveillanceMessage}>{surveillanceMessage}</Text>
-            <Text style={styles.autoLaunchStatus}>{autoLaunchStatus}</Text>
-            
-            {lastSurveillanceCheck && (
-              <Text style={styles.lastCheckTime}>
-                Dernière vérification: {lastSurveillanceCheck.toLocaleTimeString()}
-              </Text>
-            )}
-            
-            {debugInfo && (
-              <Text style={styles.debugInfo}>{debugInfo}</Text>
-            )}
-          </View>
-          
-          <View style={styles.surveillanceIndicator}>
-            <View style={styles.pulsingDot} />
-            <Text style={styles.surveillanceFrequency}>Debug complet toutes les 2 secondes</Text>
-          </View>
-        </LinearGradient>
-      </View>
     );
   };
 
@@ -509,7 +336,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🚀 Surveillance 2s - Debug complet v2.4.0
+                🚀 Surveillance simple - Lancement automatique
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -530,7 +357,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.assignedCard}
           onPress={() => {
-            launchDefaultPresentationInfiniteLoop(defaultPresentation);
+            launchDefaultPresentation(defaultPresentation);
           }}
           activeOpacity={0.8}
         >
@@ -557,7 +384,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🔄 BOUCLE INFINIE - Debug complet v2.4.0
+                🔄 BOUCLE INFINIE - Simple et efficace v1.7.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -569,45 +396,60 @@ export default function HomeScreen() {
     );
   };
 
-  const renderQuickActions = () => {
+  const renderPresentationCard = (presentation: Presentation, index: number) => {
+    const gradientColors = [
+      ['#667eea', '#764ba2'],
+      ['#f093fb', '#f5576c'],
+      ['#4facfe', '#00f2fe'],
+      ['#43e97b', '#38f9d7']
+    ];
+    
+    const colors = gradientColors[index % gradientColors.length];
+
     return (
-      <View style={styles.quickActionsSection}>
-        <Text style={styles.sectionTitle}>Actions rapides</Text>
-        
-        <View style={styles.quickActionsGrid}>
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={goToPresentations}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
-              style={styles.quickActionGradient}
-            >
-              <Monitor size={32} color="#ffffff" />
-              <Text style={styles.quickActionTitle}>Présentations</Text>
-              <Text style={styles.quickActionSubtitle}>
-                {presentations.length} disponible{presentations.length > 1 ? 's' : ''}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+      <TouchableOpacity
+        key={presentation.id}
+        style={styles.presentationCard}
+        onPress={() => playPresentation(presentation)}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={colors}
+          style={styles.cardGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.cardHeader}>
+            <Monitor size={28} color="#ffffff" />
+            <View style={styles.slideCountBadge}>
+              <Text style={styles.slideCountText}>{presentation.slide_count}</Text>
+            </View>
+          </View>
           
-          <TouchableOpacity
-            style={styles.quickActionCard}
-            onPress={goToSettings}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#6b7280', '#4b5563']}
-              style={styles.quickActionGradient}
-            >
-              <Settings size={32} color="#ffffff" />
-              <Text style={styles.quickActionTitle}>Paramètres</Text>
-              <Text style={styles.quickActionSubtitle}>Configuration</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.presentationTitle} numberOfLines={2}>
+              {presentation.name}
+            </Text>
+            <Text style={styles.presentationDescription} numberOfLines={3}>
+              {presentation.description || 'Aucune description disponible'}
+            </Text>
+            
+            <View style={styles.autoLoopIndicator}>
+              <Repeat size={14} color="rgba(255, 255, 255, 0.9)" />
+              <Text style={styles.autoLoopText}>Lecture automatique en boucle</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardFooter}>
+            <Text style={styles.createdDate}>
+              {new Date(presentation.created_at).toLocaleDateString('fr-FR')}
+            </Text>
+            <View style={styles.playButton}>
+              <Play size={18} color="#ffffff" fill="#ffffff" />
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
     );
   };
 
@@ -620,7 +462,7 @@ export default function HomeScreen() {
         >
           <Home size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 2.4.0 - DEBUG COMPLET</Text>
+          <Text style={styles.loadingSubtext}>Version 1.7.0 - SIMPLE ET EFFICACE</Text>
         </LinearGradient>
       </View>
     );
@@ -644,7 +486,7 @@ export default function HomeScreen() {
               <Home size={40} color="#ffffff" />
               <Text style={styles.title}>Accueil - Kiosque Fire TV</Text>
               <Text style={styles.subtitle}>
-                Version 2.4.0 - DEBUG COMPLET
+                Version 1.7.0 - SIMPLE ET EFFICACE
               </Text>
               
               <TouchableOpacity
@@ -666,18 +508,16 @@ export default function HomeScreen() {
         </LinearGradient>
 
         {renderConnectionStatus()}
-        {renderSurveillancePanel()}
         {renderAssignedPresentation()}
         {renderDefaultPresentation()}
-        {renderQuickActions()}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              Aperçu des présentations ({presentations.length})
+              Présentations disponibles ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Debug complet 2s • SOLUTION DÉFINITIVE v2.4.0
+              🔄 Surveillance simple 10s • SIMPLE ET EFFICACE v1.7.0
             </Text>
           </View>
           
@@ -736,37 +576,10 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.presentationsPreview}>
-              <Text style={styles.previewTitle}>Dernières présentations</Text>
-              {presentations.slice(0, 3).map((presentation, index) => (
-                <TouchableOpacity
-                  key={presentation.id}
-                  style={styles.previewCard}
-                  onPress={() => playPresentation(presentation)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.previewContent}>
-                    <Monitor size={24} color="#3b82f6" />
-                    <View style={styles.previewInfo}>
-                      <Text style={styles.previewName} numberOfLines={1}>
-                        {presentation.name || presentation.nom}
-                      </Text>
-                      <Text style={styles.previewDescription} numberOfLines={1}>
-                        {presentation.slide_count} slide{presentation.slide_count > 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                    <Play size={20} color="#3b82f6" />
-                  </View>
-                </TouchableOpacity>
-              ))}
-              
-              <TouchableOpacity
-                style={styles.viewAllButton}
-                onPress={goToPresentations}
-              >
-                <Text style={styles.viewAllText}>Voir toutes les présentations</Text>
-                <Monitor size={16} color="#3b82f6" />
-              </TouchableOpacity>
+            <View style={styles.presentationsGrid}>
+              {presentations.map((presentation, index) => 
+                renderPresentationCard(presentation, index)
+              )}
             </View>
           )}
         </View>
@@ -887,84 +700,6 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     marginTop: 4,
   },
-  // NOUVEAU v2.4.0 - Styles pour le panneau de surveillance avec debug
-  surveillancePanel: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-  },
-  surveillanceGradient: {
-    padding: 20,
-  },
-  surveillanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
-  surveillanceTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  surveillanceContent: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  surveillanceMessage: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  autoLaunchStatus: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  lastCheckTime: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  debugInfo: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 11,
-    textAlign: 'center',
-    fontFamily: 'monospace',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  surveillanceIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  pulsingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#ffffff',
-    opacity: 0.8,
-  },
-  surveillanceFrequency: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12,
-    fontWeight: '500',
-  },
   assignedSection: {
     paddingHorizontal: 20,
     marginBottom: 24,
@@ -1059,41 +794,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  quickActionsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  quickActionCard: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  quickActionGradient: {
-    padding: 20,
-    alignItems: 'center',
-    minHeight: 120,
-    justifyContent: 'center',
-  },
-  quickActionTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  quickActionSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12,
-  },
   section: {
     padding: 20,
   },
@@ -1114,60 +814,88 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  presentationsPreview: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+  presentationsGrid: {
+    gap: 16,
   },
-  previewTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1e293b',
+  presentationCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  cardGradient: {
+    padding: 24,
+    minHeight: 220,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  previewCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 16,
+  slideCountBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  slideCountText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  cardContent: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  presentationTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+    lineHeight: 26,
+  },
+  presentationDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 20,
     marginBottom: 12,
   },
-  previewContent: {
+  autoLoopIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  previewInfo: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 12,
-  },
-  previewName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  previewDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
     borderRadius: 12,
-    padding: 16,
-    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    gap: 4,
   },
-  viewAllText: {
-    fontSize: 16,
+  autoLoopText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 11,
     fontWeight: '600',
-    color: '#3b82f6',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  createdDate: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  playButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 25,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   configurationNeeded: {
     alignItems: 'center',
