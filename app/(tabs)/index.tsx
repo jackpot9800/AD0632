@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity, Zap, Chrome as Home } from 'lucide-react-native';
+import { Monitor, Wifi, WifiOff, RefreshCw, Play, Settings, Repeat, Star, Activity, Zap, Chrome as Home, Bug } from 'lucide-react-native';
 import { apiService, Presentation, AssignedPresentation, DefaultPresentation } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 
@@ -25,18 +25,19 @@ export default function HomeScreen() {
   const [assignedPresentation, setAssignedPresentation] = useState<AssignedPresentation | null>(null);
   const [defaultPresentation, setDefaultPresentation] = useState<DefaultPresentation | null>(null);
   
-  // RÉTABLISSEMENT v2.3.0 - Surveillance active avec monitoring visible
+  // SOLUTION DÉFINITIVE v2.4.0 - Surveillance active avec debug complet
   const surveillanceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoLaunchAttemptedRef = useRef<Set<number>>(new Set());
   const isAppActiveRef = useRef(true);
   const lastCheckTimeRef = useRef<number>(0);
   const forceCheckRef = useRef<boolean>(false);
   
-  // NOUVEAU v2.3.0 - États de surveillance visibles
+  // NOUVEAU v2.4.0 - États de surveillance visibles avec debug
   const [surveillanceActive, setSurveillanceActive] = useState(false);
   const [lastSurveillanceCheck, setLastSurveillanceCheck] = useState<Date | null>(null);
   const [surveillanceMessage, setSurveillanceMessage] = useState<string>('Initialisation...');
   const [autoLaunchStatus, setAutoLaunchStatus] = useState<string>('En attente...');
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     initializeApp();
@@ -51,18 +52,21 @@ export default function HomeScreen() {
   }, []);
 
   const initializeApp = async () => {
-    console.log('=== STARTING APP INITIALIZATION v2.3.0 ACCUEIL RÉTABLI ===');
+    console.log('=== STARTING APP INITIALIZATION v2.4.0 DEBUG COMPLET ===');
     setLoading(true);
     setSurveillanceMessage('Initialisation de l\'application...');
+    setDebugInfo('Démarrage de l\'application...');
     
     await apiService.initialize();
     
     const serverUrl = apiService.getServerUrl();
     console.log('Current server URL:', serverUrl);
+    setDebugInfo(`URL serveur: ${serverUrl || 'Non configuré'}`);
     
     if (!serverUrl) {
       setConnectionStatus('not_configured');
       setSurveillanceMessage('Serveur non configuré');
+      setDebugInfo('❌ Serveur non configuré');
       setLoading(false);
       return;
     }
@@ -70,13 +74,13 @@ export default function HomeScreen() {
     await checkConnection();
     await loadPresentations();
     
-    // DÉMARRER LA SURVEILLANCE ACTIVE AVEC MONITORING v2.3.0
+    // DÉMARRER LA SURVEILLANCE ACTIVE AVEC DEBUG COMPLET v2.4.0
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startActiveSurveillanceWithMonitoring();
+      startActiveSurveillanceWithDebug();
     }
     
     setLoading(false);
-    console.log('=== APP INITIALIZATION COMPLETE v2.3.0 ===');
+    console.log('=== APP INITIALIZATION COMPLETE v2.4.0 ===');
   };
 
   const initializeStatusService = async () => {
@@ -93,19 +97,23 @@ export default function HomeScreen() {
     if (!serverUrl) {
       setConnectionStatus('not_configured');
       setSurveillanceMessage('Serveur non configuré');
+      setDebugInfo('❌ Serveur non configuré');
       return;
     }
     
     setConnectionStatus('testing');
     setSurveillanceMessage('Test de connexion...');
+    setDebugInfo('🔍 Test de connexion...');
     try {
       const isConnected = await apiService.testConnection();
       setConnectionStatus(isConnected ? 'connected' : 'disconnected');
       setSurveillanceMessage(isConnected ? 'Connexion établie' : 'Connexion échouée');
+      setDebugInfo(isConnected ? '✅ Connexion établie' : '❌ Connexion échouée');
     } catch (error) {
       console.error('Connection test error:', error);
       setConnectionStatus('disconnected');
       setSurveillanceMessage('Erreur de connexion');
+      setDebugInfo(`❌ Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`);
     }
   };
 
@@ -114,17 +122,21 @@ export default function HomeScreen() {
     if (!serverUrl) {
       setConnectionStatus('not_configured');
       setSurveillanceMessage('Serveur non configuré');
+      setDebugInfo('❌ Serveur non configuré');
       return;
     }
     
     try {
       setSurveillanceMessage('Chargement des présentations...');
+      setDebugInfo('📥 Chargement des présentations...');
       const data = await apiService.getPresentations();
       setPresentations(data);
       setSurveillanceMessage('Présentations chargées');
+      setDebugInfo(`✅ ${data.length} présentations chargées`);
     } catch (error) {
       console.error('Error loading presentations:', error);
       setSurveillanceMessage('Erreur de chargement');
+      setDebugInfo(`❌ Erreur chargement: ${error instanceof Error ? error.message : 'Inconnue'}`);
       Alert.alert(
         'Erreur de connexion',
         `Impossible de charger les présentations`,
@@ -136,37 +148,38 @@ export default function HomeScreen() {
     }
   };
 
-  // RÉTABLISSEMENT v2.3.0 : Surveillance active avec monitoring visible
-  const startActiveSurveillanceWithMonitoring = () => {
-    console.log('=== STARTING ACTIVE SURVEILLANCE WITH MONITORING v2.3.0 ===');
+  // SOLUTION DÉFINITIVE v2.4.0 : Surveillance active avec debug complet
+  const startActiveSurveillanceWithDebug = () => {
+    console.log('=== STARTING ACTIVE SURVEILLANCE WITH DEBUG v2.4.0 ===');
     
     setSurveillanceActive(true);
     setSurveillanceMessage('🔄 Surveillance active - Recherche de présentations...');
+    setDebugInfo('🔄 Surveillance démarrée');
     
     // Vérification immédiate
-    performMonitoredCheck();
+    performDebuggedCheck();
     
-    // Surveillance continue toutes les 3 secondes avec monitoring visible
+    // Surveillance continue toutes les 2 secondes avec debug complet
     if (surveillanceIntervalRef.current) {
       clearInterval(surveillanceIntervalRef.current);
     }
     
     surveillanceIntervalRef.current = setInterval(() => {
       if (isAppActiveRef.current) {
-        performMonitoredCheck();
+        performDebuggedCheck();
       }
-    }, 3000); // Toutes les 3 secondes avec monitoring
+    }, 2000); // Toutes les 2 secondes avec debug complet
     
-    console.log('✅ Active surveillance with monitoring started (3s interval)');
+    console.log('✅ Active surveillance with debug started (2s interval)');
   };
 
-  // FONCTION PRINCIPALE v2.3.0 : Vérification avec monitoring visible
-  const performMonitoredCheck = async () => {
+  // FONCTION PRINCIPALE v2.4.0 : Vérification avec debug complet
+  const performDebuggedCheck = async () => {
     try {
       const now = Date.now();
       
       // Permettre les vérifications forcées ou respecter l'intervalle minimum
-      if (!forceCheckRef.current && (now - lastCheckTimeRef.current < 2500)) {
+      if (!forceCheckRef.current && (now - lastCheckTimeRef.current < 1500)) {
         return;
       }
       lastCheckTimeRef.current = now;
@@ -174,74 +187,108 @@ export default function HomeScreen() {
       
       setLastSurveillanceCheck(new Date());
       setSurveillanceMessage('🔍 Vérification en cours...');
+      setDebugInfo(`🔍 Check ${new Date().toLocaleTimeString()}`);
       
-      console.log('=== MONITORED CHECK v2.3.0 ===');
+      console.log('=== DEBUGGED CHECK v2.4.0 ===');
       
       // 1. Vérifier les assignations (priorité absolue)
       setSurveillanceMessage('🔍 Recherche de présentations assignées...');
+      setDebugInfo('🔍 Vérification assignations...');
       const assigned = await apiService.checkForAssignedPresentation();
       if (assigned) {
         console.log('✅ ASSIGNED PRESENTATION FOUND:', assigned.presentation_id);
         setAssignedPresentation(assigned);
         setSurveillanceMessage('📌 Présentation assignée trouvée !');
         setAutoLaunchStatus('🚀 Lancement de la présentation assignée...');
+        setDebugInfo(`✅ Assignée: ${assigned.presentation_name}`);
         
         if (!autoLaunchAttemptedRef.current.has(assigned.presentation_id)) {
-          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION v2.3.0');
+          console.log('🚀 LAUNCHING ASSIGNED PRESENTATION v2.4.0');
           autoLaunchAttemptedRef.current.add(assigned.presentation_id);
           launchAssignedPresentation(assigned);
         }
         return; // Priorité aux assignations
       }
       
-      // 2. Vérifier la présentation par défaut avec validation stricte RENFORCÉE
+      // 2. Vérifier la présentation par défaut avec debug complet
       setSurveillanceMessage('🔍 Recherche de présentation par défaut...');
+      setDebugInfo('🔍 Vérification présentation par défaut...');
+      
+      console.log('=== CALLING checkForDefaultPresentation v2.4.0 ===');
       const defaultPres = await apiService.checkForDefaultPresentation();
-      console.log('=== DEFAULT PRESENTATION CHECK RESULT v2.3.0 ===');
+      console.log('=== DEFAULT PRESENTATION CHECK RESULT v2.4.0 ===');
       console.log('Default presentation data:', defaultPres);
       
-      // VALIDATION STRICTE RENFORCÉE v2.3.0
-      if (defaultPres && 
-          defaultPres.presentation_id && 
-          defaultPres.presentation_id > 0 && 
-          defaultPres.presentation_name && 
-          defaultPres.presentation_name.trim() !== '' &&
-          defaultPres.presentation_name.trim().length > 0) {
-        
-        console.log('✅ VALID DEFAULT PRESENTATION FOUND v2.3.0:', {
+      // VALIDATION STRICTE RENFORCÉE v2.4.0 avec debug complet
+      console.log('=== VALIDATION DEBUG v2.4.0 ===');
+      const hasDefaultPres = !!defaultPres;
+      const hasId = !!(defaultPres?.presentation_id);
+      const idGreaterThanZero = (defaultPres?.presentation_id || 0) > 0;
+      const hasName = !!(defaultPres?.presentation_name);
+      const nameNotEmpty = !!(defaultPres?.presentation_name?.trim());
+      const nameLength = defaultPres?.presentation_name?.trim()?.length || 0;
+      
+      console.log('Validation steps:', {
+        hasDefaultPres,
+        hasId,
+        idGreaterThanZero,
+        hasName,
+        nameNotEmpty,
+        nameLength
+      });
+      
+      setDebugInfo(`Debug: ID=${defaultPres?.presentation_id}, Nom="${defaultPres?.presentation_name}", Longueur=${nameLength}`);
+      
+      if (hasDefaultPres && hasId && idGreaterThanZero && hasName && nameNotEmpty && nameLength > 0) {
+        console.log('✅ ✅ ✅ VALID DEFAULT PRESENTATION FOUND v2.4.0 ✅ ✅ ✅');
+        console.log('VALID DEFAULT PRESENTATION DETAILS:', {
           id: defaultPres.presentation_id,
           name: defaultPres.presentation_name,
-          nameLength: defaultPres.presentation_name.trim().length
+          nameLength: nameLength
         });
         
         setDefaultPresentation(defaultPres);
         setSurveillanceMessage('⭐ Présentation par défaut trouvée !');
         setAutoLaunchStatus(`🔄 Lancement automatique: ${defaultPres.presentation_name}`);
+        setDebugInfo(`✅ Par défaut: ${defaultPres.presentation_name} (ID: ${defaultPres.presentation_id})`);
         
-        // LANCEMENT AUTOMATIQUE GARANTI v2.3.0
+        // LANCEMENT AUTOMATIQUE GARANTI v2.4.0
         if (!autoLaunchAttemptedRef.current.has(defaultPres.presentation_id)) {
-          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.3.0');
+          console.log('🚀 LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.4.0');
           autoLaunchAttemptedRef.current.add(defaultPres.presentation_id);
           setAutoLaunchStatus('🚀 Démarrage en boucle infinie...');
+          setDebugInfo(`🚀 Lancement: ${defaultPres.presentation_name}`);
           launchDefaultPresentationInfiniteLoop(defaultPres);
         } else {
           setSurveillanceMessage('⚠️ Présentation déjà lancée, surveillance continue...');
           setAutoLaunchStatus('✅ Présentation en cours de diffusion');
+          setDebugInfo(`✅ Déjà lancée: ${defaultPres.presentation_name}`);
         }
       } else {
-        console.log('❌ No valid default presentation found v2.3.0');
-        console.log('Validation details:', {
-          hasDefaultPres: !!defaultPres,
-          hasId: !!(defaultPres?.presentation_id),
-          idGreaterThanZero: (defaultPres?.presentation_id || 0) > 0,
-          hasName: !!(defaultPres?.presentation_name),
-          nameNotEmpty: !!(defaultPres?.presentation_name?.trim()),
-          nameLength: defaultPres?.presentation_name?.trim()?.length || 0
+        console.log('❌ ❌ ❌ NO VALID DEFAULT PRESENTATION FOUND v2.4.0 ❌ ❌ ❌');
+        console.log('Validation failure details:', {
+          hasDefaultPres,
+          hasId,
+          idGreaterThanZero,
+          hasName,
+          nameNotEmpty,
+          nameLength
         });
         
         setSurveillanceMessage('❌ Aucune présentation par défaut valide');
         setAutoLaunchStatus('⏳ En attente d\'une présentation...');
         setDefaultPresentation(null);
+        
+        // Debug détaillé de l'échec
+        let debugFailure = '❌ Échec validation: ';
+        if (!hasDefaultPres) debugFailure += 'Pas de données, ';
+        if (!hasId) debugFailure += 'Pas d\'ID, ';
+        if (!idGreaterThanZero) debugFailure += 'ID ≤ 0, ';
+        if (!hasName) debugFailure += 'Pas de nom, ';
+        if (!nameNotEmpty) debugFailure += 'Nom vide, ';
+        if (nameLength === 0) debugFailure += 'Longueur = 0';
+        
+        setDebugInfo(debugFailure);
         
         // Réinitialiser les tentatives si aucune présentation par défaut valide
         if (!defaultPres || !defaultPres.presentation_id || defaultPres.presentation_id <= 0) {
@@ -250,14 +297,15 @@ export default function HomeScreen() {
       }
       
     } catch (error) {
-      console.error('Error in monitored check:', error);
+      console.error('Error in debugged check:', error);
       setSurveillanceMessage('❌ Erreur lors de la vérification');
       setAutoLaunchStatus('❌ Erreur de surveillance');
+      setDebugInfo(`❌ Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`);
     }
   };
 
   const launchAssignedPresentation = (assigned: AssignedPresentation) => {
-    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.3.0 ===');
+    console.log('=== LAUNCHING ASSIGNED PRESENTATION v2.4.0 ===');
     
     apiService.markAssignedPresentationAsViewed(assigned.presentation_id);
     
@@ -272,9 +320,9 @@ export default function HomeScreen() {
     router.push(url);
   };
 
-  // LANCEMENT EN BOUCLE INFINIE GARANTI v2.3.0
+  // LANCEMENT EN BOUCLE INFINIE GARANTI v2.4.0
   const launchDefaultPresentationInfiniteLoop = (defaultPres: DefaultPresentation) => {
-    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.3.0 ===');
+    console.log('=== LAUNCHING DEFAULT PRESENTATION IN INFINITE LOOP v2.4.0 ===');
     console.log('Presentation ID:', defaultPres.presentation_id);
     console.log('Presentation name:', defaultPres.presentation_name);
     
@@ -286,17 +334,18 @@ export default function HomeScreen() {
     });
     
     const url = `/presentation/${defaultPres.presentation_id}?${params.toString()}`;
-    console.log('🔄 Navigating to default presentation with INFINITE LOOP v2.3.0:', url);
+    console.log('🔄 Navigating to default presentation with INFINITE LOOP v2.4.0:', url);
     router.push(url);
   };
 
   const handleManualRefresh = async () => {
     if (refreshing) return;
     
-    console.log('=== MANUAL REFRESH v2.3.0 ===');
+    console.log('=== MANUAL REFRESH v2.4.0 ===');
     setRefreshing(true);
     setSurveillanceMessage('🔄 Actualisation manuelle...');
     setAutoLaunchStatus('🔄 Réinitialisation...');
+    setDebugInfo('🔄 Actualisation manuelle...');
     
     // RÉINITIALISER complètement les tentatives de lancement
     autoLaunchAttemptedRef.current.clear();
@@ -308,7 +357,7 @@ export default function HomeScreen() {
     
     // RELANCER la surveillance après le refresh
     if (apiService.isDeviceRegistered() && connectionStatus === 'connected') {
-      startActiveSurveillanceWithMonitoring();
+      startActiveSurveillanceWithDebug();
     }
     
     setRefreshing(false);
@@ -376,13 +425,13 @@ export default function HomeScreen() {
           {apiService.getServerUrl() || 'Cliquez pour configurer'}
         </Text>
         <Text style={styles.versionText}>
-          Version 2.3.0 - ACCUEIL RÉTABLI • Surveillance 3s • ID: {apiService.getDeviceId()}
+          Version 2.4.0 - DEBUG COMPLET • Surveillance 2s • ID: {apiService.getDeviceId()}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  // NOUVEAU v2.3.0 - Panneau de surveillance visible
+  // NOUVEAU v2.4.0 - Panneau de surveillance avec debug complet
   const renderSurveillancePanel = () => {
     if (!surveillanceActive) return null;
 
@@ -394,8 +443,8 @@ export default function HomeScreen() {
         >
           <View style={styles.surveillanceHeader}>
             <Activity size={20} color="#ffffff" />
-            <Text style={styles.surveillanceTitle}>Surveillance Active</Text>
-            <Zap size={16} color="#ffffff" />
+            <Text style={styles.surveillanceTitle}>Surveillance Active v2.4.0</Text>
+            <Bug size={16} color="#ffffff" />
           </View>
           
           <View style={styles.surveillanceContent}>
@@ -407,11 +456,15 @@ export default function HomeScreen() {
                 Dernière vérification: {lastSurveillanceCheck.toLocaleTimeString()}
               </Text>
             )}
+            
+            {debugInfo && (
+              <Text style={styles.debugInfo}>{debugInfo}</Text>
+            )}
           </View>
           
           <View style={styles.surveillanceIndicator}>
             <View style={styles.pulsingDot} />
-            <Text style={styles.surveillanceFrequency}>Vérification toutes les 3 secondes</Text>
+            <Text style={styles.surveillanceFrequency}>Debug complet toutes les 2 secondes</Text>
           </View>
         </LinearGradient>
       </View>
@@ -456,7 +509,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🚀 Surveillance 3s - Lancement automatique v2.3.0
+                🚀 Surveillance 2s - Debug complet v2.4.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -504,7 +557,7 @@ export default function HomeScreen() {
             
             <View style={styles.assignedFooter}>
               <Text style={styles.assignedMode}>
-                🔄 BOUCLE INFINIE - Surveillance 3s v2.3.0
+                🔄 BOUCLE INFINIE - Debug complet v2.4.0
               </Text>
               <View style={styles.assignedPlayButton}>
                 <Play size={18} color="#ffffff" fill="#ffffff" />
@@ -567,7 +620,7 @@ export default function HomeScreen() {
         >
           <Home size={48} color="#ffffff" />
           <Text style={styles.loadingText}>Initialisation de l'application...</Text>
-          <Text style={styles.loadingSubtext}>Version 2.3.0 - ACCUEIL RÉTABLI</Text>
+          <Text style={styles.loadingSubtext}>Version 2.4.0 - DEBUG COMPLET</Text>
         </LinearGradient>
       </View>
     );
@@ -591,7 +644,7 @@ export default function HomeScreen() {
               <Home size={40} color="#ffffff" />
               <Text style={styles.title}>Accueil - Kiosque Fire TV</Text>
               <Text style={styles.subtitle}>
-                Version 2.3.0 - ACCUEIL RÉTABLI
+                Version 2.4.0 - DEBUG COMPLET
               </Text>
               
               <TouchableOpacity
@@ -624,7 +677,7 @@ export default function HomeScreen() {
               Aperçu des présentations ({presentations.length})
             </Text>
             <Text style={styles.sectionSubtitle}>
-              🔄 Surveillance active 3s • ACCUEIL RÉTABLI v2.3.0
+              🔄 Debug complet 2s • SOLUTION DÉFINITIVE v2.4.0
             </Text>
           </View>
           
@@ -834,7 +887,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     marginTop: 4,
   },
-  // NOUVEAU v2.3.0 - Styles pour le panneau de surveillance
+  // NOUVEAU v2.4.0 - Styles pour le panneau de surveillance avec debug
   surveillancePanel: {
     marginHorizontal: 20,
     marginBottom: 16,
@@ -882,6 +935,17 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 12,
     textAlign: 'center',
+    marginBottom: 4,
+  },
+  debugInfo: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 11,
+    textAlign: 'center',
+    fontFamily: 'monospace',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 4,
   },
   surveillanceIndicator: {
     flexDirection: 'row',
