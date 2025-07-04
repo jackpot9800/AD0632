@@ -16,6 +16,7 @@ import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Monitor, Clock, CircleAl
 import { apiService, PresentationDetails, Slide } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+import { Video, ResizeMode } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ export default function PresentationScreen() {
   const hideControlsTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoPlayTriggeredRef = useRef<boolean>(false);
   const presentationLoadedRef = useRef<boolean>(false);
+  const videoRef = useRef<Video>(null);
 
   // Nettoyage des ressources
   const cleanupResources = useCallback(() => {
@@ -296,12 +298,28 @@ export default function PresentationScreen() {
     loadPresentation();
   }, []);
 
+  // Fonction pour déterminer si c'est une vidéo
+  const isVideoSlide = useCallback((slide: Slide) => {
+    const mediaPath = slide.media_path || slide.image_path || '';
+    return mediaPath.toLowerCase().includes('.mp4') || 
+           mediaPath.toLowerCase().includes('.mov') || 
+           mediaPath.toLowerCase().includes('.avi') ||
+           mediaPath.toLowerCase().includes('youtube.com') ||
+           mediaPath.toLowerCase().includes('youtu.be');
+  }, []);
+
+  // Fonction pour obtenir l'URL YouTube embed
+  const getYouTubeEmbedUrl = useCallback((url: string) => {
+    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    return videoId ? `https://www.youtube.com/embed/${videoId[1]}?autoplay=1&controls=0&showinfo=0&rel=0` : null;
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
         <Text style={styles.loadingText}>Chargement de la présentation...</Text>
-        <Text style={styles.loadingSubtext}>Version 2.0.0 - Lancement automatique simplifié</Text>
+        <Text style={styles.loadingSubtext}>Version 2.0.0 - Support vidéo intégré</Text>
       </View>
     );
   }
@@ -363,6 +381,9 @@ export default function PresentationScreen() {
     ? ((currentSlide.duration * 1000 - timeRemaining) / (currentSlide.duration * 1000)) * 100
     : 0;
 
+  const isVideo = isVideoSlide(currentSlide);
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(currentSlide.image_url);
+
   return (
     <View style={styles.container}>
       <StatusBar hidden />
@@ -375,10 +396,36 @@ export default function PresentationScreen() {
         {imageLoadError[currentSlide.id] ? (
           <View style={styles.imageErrorContainer}>
             <AlertCircle size={48} color="#ef4444" />
-            <Text style={styles.imageErrorText}>Impossible de charger l'image</Text>
+            <Text style={styles.imageErrorText}>Impossible de charger le média</Text>
             <Text style={styles.imageErrorUrl}>{currentSlide.image_url}</Text>
           </View>
+        ) : isVideo ? (
+          youtubeEmbedUrl ? (
+            // YouTube Video (nécessiterait WebView pour un support complet)
+            <View style={styles.videoContainer}>
+              <Monitor size={64} color="#ffffff" />
+              <Text style={styles.videoText}>Vidéo YouTube</Text>
+              <Text style={styles.videoSubtext}>Support YouTube en développement</Text>
+            </View>
+          ) : (
+            // Vidéo MP4 locale
+            <Video
+              ref={videoRef}
+              style={styles.slideVideo}
+              source={{ uri: currentSlide.image_url }}
+              useNativeControls={false}
+              resizeMode={ResizeMode.COVER}
+              isLooping={false}
+              shouldPlay={isPlaying}
+              onPlaybackStatusUpdate={(status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  nextSlide();
+                }
+              }}
+            />
+          )
         ) : (
+          // Image normale
           <Image
             source={{ uri: currentSlide.image_url }}
             style={styles.slideImage}
@@ -414,6 +461,13 @@ export default function PresentationScreen() {
           </View>
         )}
 
+        {isVideo && (
+          <View style={styles.videoIndicator}>
+            <Play size={16} color="#ffffff" />
+            <Text style={styles.videoText}>VIDÉO</Text>
+          </View>
+        )}
+
         <View style={styles.versionIndicator}>
           <Text style={styles.versionText}>v2.0.0</Text>
         </View>
@@ -441,6 +495,7 @@ export default function PresentationScreen() {
                   {safeCurrentSlideIndex + 1} / {presentation.slides.length}
                   {isLooping && loopCount > 0 && ` • Boucle ${loopCount}`}
                   {auto_play === 'true' && ' • Auto-play'}
+                  {isVideo && ' • Vidéo'}
                 </Text>
               </View>
 
@@ -588,6 +643,32 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  slideVideo: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  videoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  videoText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+  },
+  videoSubtext: {
+    color: '#9ca3af',
+    fontSize: 14,
+    marginTop: 8,
+  },
   imageErrorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -669,6 +750,18 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  videoIndicator: {
+    position: 'absolute',
+    top: 120,
+    left: 20,
+    backgroundColor: 'rgba(139, 92, 246, 0.9)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   versionIndicator: {
     position: 'absolute',
