@@ -16,7 +16,7 @@ import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Monitor, Clock, CircleAl
 import { apiService, PresentationDetails, Slide } from '@/services/ApiService';
 import { statusService } from '@/services/StatusService';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,6 +32,7 @@ export default function PresentationScreen() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [imageLoadError, setImageLoadError] = useState<{[key: number]: boolean}>({});
   const [loopCount, setLoopCount] = useState(0);
+  const [videoLoading, setVideoLoading] = useState(false);
   
   // Refs pour la gestion simplifiée
   const slideTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -129,23 +130,29 @@ export default function PresentationScreen() {
         console.log(`=== STARTING TIMER FOR SLIDE ${currentSlideIndex + 1} v2.0.0 SIMPLE ===`);
         console.log(`Duration: ${currentSlide.duration}s`);
         
-        slideTimerRef.current = setTimeout(() => {
-          console.log(`=== TIMER COMPLETED FOR SLIDE ${currentSlideIndex + 1} v2.0.0 SIMPLE ===`);
-          nextSlide();
-        }, duration);
+        // Pour les vidéos, ne pas utiliser de timer automatique
+        const isVideo = isVideoSlide(currentSlide);
+        if (!isVideo) {
+          slideTimerRef.current = setTimeout(() => {
+            console.log(`=== TIMER COMPLETED FOR SLIDE ${currentSlideIndex + 1} v2.0.0 SIMPLE ===`);
+            nextSlide();
+          }, duration);
+        }
         
-        // Mettre à jour le temps restant
-        const startTime = Date.now();
-        const updateTimer = () => {
-          const elapsed = Date.now() - startTime;
-          const remaining = Math.max(0, duration - elapsed);
-          setTimeRemaining(remaining);
-          
-          if (remaining > 0 && isPlaying) {
-            setTimeout(updateTimer, 100);
-          }
-        };
-        updateTimer();
+        // Mettre à jour le temps restant pour les images seulement
+        if (!isVideo) {
+          const startTime = Date.now();
+          const updateTimer = () => {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, duration - elapsed);
+            setTimeRemaining(remaining);
+            
+            if (remaining > 0 && isPlaying) {
+              setTimeout(updateTimer, 100);
+            }
+          };
+          updateTimer();
+        }
       }
     } else {
       setTimeRemaining(0);
@@ -300,10 +307,11 @@ export default function PresentationScreen() {
 
   // Fonction pour déterminer si c'est une vidéo
   const isVideoSlide = useCallback((slide: Slide) => {
-    const mediaPath = slide.media_path || slide.image_path || '';
+    const mediaPath = slide.media_path || slide.image_path || slide.image_url || '';
     return mediaPath.toLowerCase().includes('.mp4') || 
            mediaPath.toLowerCase().includes('.mov') || 
            mediaPath.toLowerCase().includes('.avi') ||
+           mediaPath.toLowerCase().includes('.webm') ||
            mediaPath.toLowerCase().includes('youtube.com') ||
            mediaPath.toLowerCase().includes('youtu.be');
   }, []);
@@ -313,6 +321,22 @@ export default function PresentationScreen() {
     const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
     return videoId ? `https://www.youtube.com/embed/${videoId[1]}?autoplay=1&controls=0&showinfo=0&rel=0` : null;
   }, []);
+
+  // Gestionnaire pour la fin de vidéo
+  const handleVideoStatusUpdate = useCallback((status: AVPlaybackStatus) => {
+    if (status.isLoaded) {
+      if (status.didJustFinish) {
+        console.log('=== VIDEO FINISHED, MOVING TO NEXT SLIDE ===');
+        nextSlide();
+      }
+      
+      // Mettre à jour le temps restant pour les vidéos
+      if (status.durationMillis && status.positionMillis !== undefined) {
+        const remaining = status.durationMillis - status.positionMillis;
+        setTimeRemaining(remaining);
+      }
+    }
+  }, [nextSlide]);
 
   if (loading) {
     return (
@@ -406,31 +430,51 @@ export default function PresentationScreen() {
               <Monitor size={64} color="#ffffff" />
               <Text style={styles.videoText}>Vidéo YouTube</Text>
               <Text style={styles.videoSubtext}>Support YouTube en développement</Text>
+              <Text style={styles.videoUrl}>{currentSlide.image_url}</Text>
             </View>
           ) : (
-            // Vidéo MP4 locale
-            <Video
-              ref={videoRef}
-              style={styles.slideVideo}
-              source={{ uri: currentSlide.image_url }}
-              useNativeControls={false}
-              resizeMode={ResizeMode.COVER}
-              isLooping={false}
-              shouldPlay={isPlaying}
-              onPlaybackStatusUpdate={(status) => {
-                if (status.isLoaded && status.didJustFinish) {
-                  nextSlide();
-                }
-              }}
-            />
+            // Vidéo MP4 locale avec gestion d'erreur améliorée
+            <View style={styles.videoWrapper}>
+              {videoLoading && (
+                <View style={styles.videoLoadingOverlay}>
+                  <ActivityIndicator size="large" color="#ffffff" />
+                  <Text style={styles.videoLoadingText}>Chargement de la vidéo...</Text>
+                </View>
+              )}
+              <Video
+                ref={videoRef}
+                style={styles.slideVideo}
+                source={{ uri: currentSlide.image_url }}
+                useNativeControls={false}
+                resizeMode={ResizeMode.COVER}
+                isLooping={false}
+                shouldPlay={isPlaying}
+                onPlaybackStatusUpdate={handleVideoStatusUpdate}
+                onLoadStart={() => {
+                  console.log('Video loading started');
+                  setVideoLoading(true);
+                }}
+                onLoad={(status) => {
+                  console.log('Video loaded successfully', status);
+                  setVideoLoading(false);
+                }}
+                onError={(error) => {
+                  console.error('Video load error:', error);
+                  setVideoLoading(false);
+                  handleImageError(currentSlide.id);
+                }}
+              />
+            </View>
           )
         ) : (
-          // Image normale
+          // Image normale avec style plein écran
           <Image
             source={{ uri: currentSlide.image_url }}
             style={styles.slideImage}
             resizeMode="cover"
             onError={() => handleImageError(currentSlide.id)}
+            onLoadStart={() => console.log('Image loading started')}
+            onLoad={() => console.log('Image loaded successfully')}
           />
         )}
         
@@ -643,6 +687,12 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  videoWrapper: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+    backgroundColor: '#000000',
+  },
   slideVideo: {
     width: '100%',
     height: '100%',
@@ -652,11 +702,28 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  videoLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  videoLoadingText: {
+    color: '#ffffff',
+    fontSize: 16,
+    marginTop: 16,
+  },
   videoContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#1a1a1a',
+    padding: 40,
   },
   videoText: {
     color: '#ffffff',
@@ -668,6 +735,14 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 14,
     marginTop: 8,
+    textAlign: 'center',
+  },
+  videoUrl: {
+    color: '#6b7280',
+    fontSize: 12,
+    marginTop: 16,
+    textAlign: 'center',
+    fontFamily: 'monospace',
   },
   imageErrorContainer: {
     flex: 1,
