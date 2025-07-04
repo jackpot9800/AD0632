@@ -994,14 +994,18 @@ class ApiService {
           }
         }
         
+        // CORRECTION: Construire correctement l'URL sans duplication
         if (imageUrl && this.baseUrl) {
           const baseServerUrl = this.getBaseServerUrl();
           const imagePath = slide.media_path || slide.image_path || '';
           
           if (imagePath) {
-            if (imagePath.includes('uploads/slides/')) {
+            // Vérifier si le chemin contient déjà 'uploads'
+            if (imagePath.includes('uploads/')) {
+              // Si le chemin contient déjà 'uploads/', utiliser tel quel
               imageUrl = `${baseServerUrl}/${imagePath}`;
             } else {
+              // Sinon, ajouter le préfixe uploads/slides/
               imageUrl = `${baseServerUrl}/uploads/slides/${imagePath}`;
             }
           }
@@ -1013,6 +1017,7 @@ class ApiService {
         console.log('Slide ID:', slide.id);
         console.log('Raw duration from DB:', slide.duration);
         console.log('Parsed duration:', duration);
+        console.log('Final image URL:', imageUrl);
         
         return {
           ...slide,
@@ -1063,9 +1068,12 @@ class ApiService {
     
     const baseServerUrl = this.getBaseServerUrl();
     
-    if (imagePath.includes('uploads/slides/')) {
+    // CORRECTION: Vérifier si le chemin contient déjà 'uploads'
+    if (imagePath.includes('uploads/')) {
+      // Si le chemin contient déjà 'uploads/', utiliser tel quel
       return `${baseServerUrl}/${imagePath}`;
     } else {
+      // Sinon, ajouter le préfixe uploads/slides/
       return `${baseServerUrl}/uploads/slides/${imagePath}`;
     }
   }
